@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(bun add:*)",
+      "Bash(npm install)",
+      "Read(//c/c/**)",
+      "Read(//c/lirvana-voice-ui/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:community.openai.com)",
+      "WebFetch(domain:openai-realtime-blocks.vercel.app)",
+      "Read(//c/Users/freddyrs/OneDrive - Cegeka/Desktop/DEMOS TDX/Lirvan/**)",
+      "Bash(npm:*)",
+      "Bash(git remote add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "lirvana-api-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Backend API server for Lirvana Voice UI",
+  "main": "api/session.js",
+  "scripts": {
+    "start": "node api/session.js",
+    "dev": "nodemon api/session.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "node-fetch": "^3.3.2",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
