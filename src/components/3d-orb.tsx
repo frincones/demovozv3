@@ -378,9 +378,41 @@ const Orb: React.FC<OrbProps> = ({
       }
     })();
 
-    // NEVER touch wireframe colors - they are set once at initialization
-    if (wireframeRef.current) {
+    // Force gradient colors to be preserved in all states
+    if (wireframeRef.current && wireframeRef.current.geometry) {
       wireframeRef.current.visible = true;
+
+      // Force recreate gradient colors if they're missing or corrupted
+      const colorAttribute = wireframeRef.current.geometry.getAttribute('color');
+      if (!colorAttribute || colorAttribute.array.length === 0) {
+        console.log('Recreating missing wireframe colors for state:', connectionStatus);
+
+        const positions = wireframeRef.current.geometry.getAttribute('position');
+        const vertexColors = new Float32Array(positions.count * 3);
+
+        for (let i = 0; i < positions.count; i++) {
+          const y = positions.getY(i);
+          const normalizedY = Math.max(0, Math.min(1, (y + 10) / 20));
+
+          const r = 0.125 + normalizedY * (1.0 - 0.125);
+          const g = 0.314 + normalizedY * (0.125 - 0.314);
+          const b = 0.941 + normalizedY * (1.0 - 0.941);
+
+          vertexColors[i * 3] = r;
+          vertexColors[i * 3 + 1] = g;
+          vertexColors[i * 3 + 2] = b;
+        }
+
+        wireframeRef.current.geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
+      }
+
+      // Ensure material is correctly configured
+      if (wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
+        wireframeRef.current.material.vertexColors = true;
+        wireframeRef.current.material.transparent = false;
+        wireframeRef.current.material.opacity = 1.0;
+        wireframeRef.current.material.needsUpdate = true;
+      }
     }
 
     // Update glow mesh color and intensity - ensure visibility but don't overpower wireframe
