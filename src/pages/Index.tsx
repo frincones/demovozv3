@@ -106,8 +106,8 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white overflow-hidden relative">
-      {/* Clean white background - no ambient effects */}
+    <div className="min-h-screen bg-black overflow-hidden relative" style={{ backgroundColor: 'black' }}>
+      {/* Clean black background - no ambient effects */}
 
       {/* Consent banner */}
       <AnimatePresence>

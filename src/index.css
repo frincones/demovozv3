@@ -11,11 +11,11 @@ All colors MUST be HSL.
     --background: 0 0% 0%;    /* Pure black background */
     --foreground: 0 0% 100%;  /* White text for contrast */
 
-    --card: 0 0% 100%;       /* White cards */
-    --card-foreground: 0 0% 0%;  /* Black text on cards */
+    --card: 0 0% 0%;         /* Black cards */
+    --card-foreground: 0 0% 100%;  /* White text on cards */
 
-    --popover: 0 0% 100%;       /* White popovers */
-    --popover-foreground: 0 0% 0%;  /* Black text on popovers */
+    --popover: 0 0% 0%;         /* Black popovers */
+    --popover-foreground: 0 0% 100%;  /* White text on popovers */
 
     --primary: 220 100% 60%;
     --primary-foreground: 0 0% 100%;
@@ -87,5 +87,14 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    background-color: black !important;
+  }
+
+  html {
+    background-color: black !important;
+  }
+
+  #root {
+    background-color: black !important;
   }
 }
