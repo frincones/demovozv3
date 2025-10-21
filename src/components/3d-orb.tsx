@@ -171,13 +171,35 @@ const Orb: React.FC<OrbProps> = ({
     });
     const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with full color control using EdgesGeometry
+    // 2. Wireframe with gradient color control using EdgesGeometry
     const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
+
+    // Create gradient-like effect by using vertex colors
+    const edgePositions = edgesGeometry.getAttribute('position');
+    const edgeColors = new Float32Array(edgePositions.count * 3);
+
+    // Apply gradient from electric blue to magenta based on vertex position
+    for (let i = 0; i < edgePositions.count; i++) {
+      const y = edgePositions.getY(i);
+      const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
+
+      // Gradient from electric blue (bottom) to magenta (top)
+      const r = 0.125 + normalizedY * 0.875; // 0.125 (blue) to 1.0 (magenta)
+      const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13; // 0.31 (blue) to 0.13 (magenta)
+      const b = 0.94 + normalizedY * 0.06; // 0.94 (blue) to 1.0 (magenta)
+
+      edgeColors[i * 3] = r;
+      edgeColors[i * 3 + 1] = g;
+      edgeColors[i * 3 + 2] = b;
+    }
+
+    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
+
     const wireframeMaterial = new THREE.LineBasicMaterial({
-      color: new THREE.Color(colors.base),
+      vertexColors: true,
       linewidth: 2,
       transparent: true,
-      opacity: 0.9
+      opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
 
@@ -185,7 +207,7 @@ const Orb: React.FC<OrbProps> = ({
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: new THREE.Color(colors.emissive),
       transparent: true,
-      opacity: colors.intensity * 0.3,
+      opacity: Math.max(colors.intensity * 0.4, 0.2), // Ensure minimum visibility
       blending: THREE.AdditiveBlending
     });
     const glowMesh = new THREE.Mesh(icosahedronGeometry.clone(), glowMaterial);
@@ -355,16 +377,17 @@ const Orb: React.FC<OrbProps> = ({
       }
     })();
 
-    // Update wireframe color
+    // Update wireframe visibility and ensure it's always visible
     if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.color.setHex(colors.base);
-      wireframeRef.current.material.opacity = 0.9;
+      wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
+      wireframeRef.current.visible = true;
     }
 
-    // Update glow mesh color and intensity
+    // Update glow mesh color and intensity - ensure visibility
     if (glowMeshRef.current && glowMeshRef.current.material instanceof THREE.MeshBasicMaterial) {
       glowMeshRef.current.material.color.setHex(colors.emissive);
-      glowMeshRef.current.material.opacity = colors.intensity * 0.3;
+      glowMeshRef.current.material.opacity = Math.max(colors.intensity * 0.4, 0.2); // Ensure minimum visibility
+      glowMeshRef.current.visible = true;
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -465,15 +488,53 @@ const Orb: React.FC<OrbProps> = ({
         }
       }
 
+      // Update gradient colors based on new positions
+      const colorAttribute = geometry.getAttribute("color");
+      if (colorAttribute) {
+        for (let i = 0; i < positionAttribute.count; i++) {
+          const y = positionAttribute.getY(i);
+          const normalizedY = (y + 15) / 30; // Adjust range for morphed geometry
+
+          // Gradient from electric blue (bottom) to magenta (top)
+          const r = 0.125 + normalizedY * 0.875;
+          const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13;
+          const b = 0.94 + normalizedY * 0.06;
+
+          colorAttribute.setXYZ(i, r, g, b);
+        }
+        colorAttribute.needsUpdate = true;
+      }
+
       positionAttribute.needsUpdate = true;
     }
   };
 
   const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
-    // Recreate the wireframe geometry from the original geometry
+    // Recreate the wireframe geometry from the original geometry with gradient colors
     if (ballRef.current) {
       const originalGeometry = new THREE.IcosahedronGeometry(10, 8);
       const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
+
+      // Recreate gradient colors
+      const edgePositions = edgesGeometry.getAttribute('position');
+      const edgeColors = new Float32Array(edgePositions.count * 3);
+
+      for (let i = 0; i < edgePositions.count; i++) {
+        const y = edgePositions.getY(i);
+        const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
+
+        // Gradient from electric blue (bottom) to magenta (top)
+        const r = 0.125 + normalizedY * 0.875;
+        const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13;
+        const b = 0.94 + normalizedY * 0.06;
+
+        edgeColors[i * 3] = r;
+        edgeColors[i * 3 + 1] = g;
+        edgeColors[i * 3 + 2] = b;
+      }
+
+      edgesGeometry.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
+
       wireframe.geometry.dispose();
       wireframe.geometry = edgesGeometry;
     }
