@@ -199,7 +199,8 @@ const Orb: React.FC<OrbProps> = ({
       vertexColors: true,
       linewidth: 2,
       transparent: true,
-      opacity: 1.0
+      opacity: 1.0,
+      color: 0xffffff // White base color for vertex colors to work properly
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
 
@@ -207,7 +208,7 @@ const Orb: React.FC<OrbProps> = ({
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: new THREE.Color(colors.emissive),
       transparent: true,
-      opacity: Math.max(colors.intensity * 0.4, 0.2), // Ensure minimum visibility
+      opacity: Math.min(colors.intensity * 0.3, 0.15), // Reduced to not overpower wireframe
       blending: THREE.AdditiveBlending
     });
     const glowMesh = new THREE.Mesh(icosahedronGeometry.clone(), glowMaterial);
@@ -377,44 +378,16 @@ const Orb: React.FC<OrbProps> = ({
       }
     })();
 
-    // Update wireframe gradient colors dynamically based on connection status
-    if (wireframeRef.current && wireframeRef.current.geometry) {
-      const colorAttribute = wireframeRef.current.geometry.getAttribute('color');
-      if (colorAttribute) {
-        const positionAttribute = wireframeRef.current.geometry.getAttribute('position');
-
-        // Always use the same gradient colors regardless of connection status
-        // This ensures wireframe colors remain identical in all states
-        const topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
-        const bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
-
-        // Update gradient colors for each vertex
-        for (let i = 0; i < positionAttribute.count; i++) {
-          const y = positionAttribute.getY(i);
-          const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
-
-          // Interpolate between bottom and top colors
-          const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
-          const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
-          const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
-
-          colorAttribute.setXYZ(i, r, g, b);
-        }
-
-        colorAttribute.needsUpdate = true;
-      }
-
-      // Update wireframe visibility and opacity
-      if (wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-        wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
-        wireframeRef.current.visible = true;
-      }
+    // Update wireframe visibility and opacity only (colors are set once at initialization)
+    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
+      wireframeRef.current.material.opacity = 1.0; // Always full opacity
+      wireframeRef.current.visible = true;
     }
 
-    // Update glow mesh color and intensity - ensure visibility
+    // Update glow mesh color and intensity - ensure visibility but don't overpower wireframe
     if (glowMeshRef.current && glowMeshRef.current.material instanceof THREE.MeshBasicMaterial) {
       glowMeshRef.current.material.color.setHex(colors.emissive);
-      glowMeshRef.current.material.opacity = Math.max(colors.intensity * 0.4, 0.2); // Ensure minimum visibility
+      glowMeshRef.current.material.opacity = Math.min(colors.intensity * 0.3, 0.15); // Reduced to not overpower wireframe
       glowMeshRef.current.visible = true;
     }
 
@@ -516,26 +489,11 @@ const Orb: React.FC<OrbProps> = ({
         }
       }
 
-      // Update gradient colors based on new positions and connection status
-      const colorAttribute = geometry.getAttribute("color");
-      if (colorAttribute) {
-        // Always use the same gradient colors regardless of connection status
-        const topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
-        const bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
-
-        for (let i = 0; i < positionAttribute.count; i++) {
-          const y = positionAttribute.getY(i);
-          const normalizedY = (y + 15) / 30; // Adjust range for morphed geometry
-
-          // Interpolate between bottom and top colors
-          const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
-          const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
-          const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
-
-          colorAttribute.setXYZ(i, r, g, b);
-        }
-        colorAttribute.needsUpdate = true;
-      }
+      // Note: Color updates during morphing temporarily disabled to troubleshoot
+      // const colorAttribute = geometry.getAttribute("color");
+      // if (colorAttribute) {
+      //   // Update gradient colors during morph...
+      // }
 
       positionAttribute.needsUpdate = true;
     }
