@@ -49,6 +49,16 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Futuristic ORB colors
+        "electric-blue": "hsl(var(--electric-blue))",
+        "deep-blue": "hsl(var(--deep-blue))",
+        "neon-violet": "hsl(var(--neon-violet))",
+        "neon-magenta": "hsl(var(--neon-magenta))",
+        "vivid-fuchsia": "hsl(var(--vivid-fuchsia))",
+        "soft-cyan": "hsl(var(--soft-cyan))",
+        "dark-purple-bg": "hsl(var(--dark-purple-bg))",
+        "darker-purple": "hsl(var(--darker-purple))",
+        "base-dark": "hsl(var(--base-dark))",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -106,11 +116,20 @@ export default {
         "gradient-primary": "var(--gradient-primary)",
         "gradient-accent": "var(--gradient-accent)",
         "gradient-hero": "var(--gradient-hero)",
+        // New futuristic gradients
+        "gradient-orb-primary": "var(--gradient-orb-primary)",
+        "gradient-orb-glow": "var(--gradient-orb-glow)",
+        "gradient-canvas-bg": "var(--gradient-canvas-bg)",
       },
       boxShadow: {
         "glow": "var(--shadow-glow)",
         "glow-accent": "var(--shadow-glow-accent)",
         "elegant": "var(--shadow-elegant)",
+        // New futuristic shadows
+        "orb-electric": "var(--shadow-orb-electric)",
+        "orb-magenta": "var(--shadow-orb-magenta)",
+        "orb-violet": "var(--shadow-orb-violet)",
+        "orb-multi": "var(--shadow-orb-multi)",
       },
     },
   },

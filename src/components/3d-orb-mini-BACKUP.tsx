@@ -33,7 +33,6 @@ const OrbMini: React.FC<OrbMiniProps> = ({
   const ballRef = useRef<THREE.Mesh | null>(null);
   const originalPositionsRef = useRef<Float32Array | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const particlesRef = useRef<THREE.Points | null>(null);
   const noise = createNoise3D();
 
   useEffect(() => {
@@ -111,55 +110,28 @@ const OrbMini: React.FC<OrbMiniProps> = ({
     // Create smaller icosahedron for mini version
     const icosahedronGeometry = new THREE.IcosahedronGeometry(6, 6);
 
-    // Futuristic color system for mini orb
-    const getFuturisticColors = () => {
+    // Determine material color based on connection status (black/white theme)
+    const getOrbColor = () => {
       switch (connectionStatus) {
         case 'connected':
-          return {
-            base: 0x2050F0,    // Electric blue
-            emissive: 0xFF20FF, // Neon magenta
-            intensity: 0.3
-          };
+          return 0xffffff; // White when connected
         case 'requesting_mic':
         case 'fetching_token':
         case 'establishing_connection':
-          return {
-            base: 0x801090,    // Neon violet
-            emissive: 0x6A00FF, // Purple blend
-            intensity: 0.25
-          };
+          return 0x666666; // Gray when connecting
         case 'error':
-          return {
-            base: 0xFF20FF,    // Neon magenta
-            emissive: 0xF040F0, // Vivid fuchsia
-            intensity: 0.4
-          };
+          return 0x333333; // Dark gray when error
         default:
-          return {
-            base: 0x0C0722,    // Base dark
-            emissive: 0x2020A0, // Deep blue
-            intensity: 0.08
-          };
+          return 0x999999; // Medium gray when disconnected
       }
     };
 
-    const colors = getFuturisticColors();
-
-    // Use MeshPhysicalMaterial for mini version with reduced settings
-    const futuristicMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(colors.base),
-      metalness: 0.03,
-      roughness: 0.25,
+    const lambertMaterial = new THREE.MeshLambertMaterial({
+      color: getOrbColor(),
       wireframe: true,
-      wireframeLinewidth: 1.5,
-      emissive: new THREE.Color(colors.emissive),
-      emissiveIntensity: colors.intensity,
-      transparent: true,
-      opacity: 0.85,
-      flatShading: false
     });
 
-    const ball = new THREE.Mesh(icosahedronGeometry, futuristicMaterial);
+    const ball = new THREE.Mesh(icosahedronGeometry, lambertMaterial);
     ball.position.set(0, 0, 0);
     ballRef.current = ball;
 
@@ -169,65 +141,15 @@ const OrbMini: React.FC<OrbMiniProps> = ({
 
     group.add(ball);
 
-    // Create simpler particle halo for mini version
-    const particleCount = 60; // Fewer particles for mini
-    const particleGeometry = new THREE.BufferGeometry();
-    const particlePositions = new Float32Array(particleCount * 3);
-    const particleColors = new Float32Array(particleCount * 3);
-
-    // Initialize particles in a smaller spherical distribution
-    for (let i = 0; i < particleCount; i++) {
-      const radius = 9 + Math.random() * 4; // Smaller radius for mini
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
-
-      particlePositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      particlePositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      particlePositions[i * 3 + 2] = radius * Math.cos(phi);
-
-      // Color gradient from electric blue to magenta (same as main)
-      const colorBlend = Math.random();
-      particleColors[i * 3] = 0.125 + colorBlend * 0.875;
-      particleColors[i * 3 + 1] = 0.31 * (1 - colorBlend) + colorBlend * 0.13;
-      particleColors[i * 3 + 2] = 1.0;
-    }
-
-    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-    particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-
-    const particleMaterial = new THREE.PointsMaterial({
-      size: 0.5, // Smaller particles for mini
-      transparent: true,
-      opacity: 0.5,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      alphaTest: 0.1
-    });
-
-    const particles = new THREE.Points(particleGeometry, particleMaterial);
-    particlesRef.current = particles;
-    group.add(particles);
-
-    // Enhanced lighting setup for mini futuristic rendering
-    // Subtle ambient base light (softer for mini)
-    const ambientLight = new THREE.AmbientLight(0x0C0722, 0.4); // Dark purple base
+    // Lighting setup for beautiful rendering (softer for mini)
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
-    // Primary electric blue light (reduced intensity for mini)
-    const primaryLight = new THREE.SpotLight(0x2050F0, 0.8);
-    primaryLight.position.set(-8, 15, 12);
-    primaryLight.angle = Math.PI / 5;
-    primaryLight.penumbra = 0.4;
-    primaryLight.lookAt(ball.position);
-    scene.add(primaryLight);
-
-    // Secondary magenta rim light (subtle for mini)
-    const rimLight = new THREE.SpotLight(0xFF20FF, 0.5);
-    rimLight.position.set(8, -10, 8);
-    rimLight.angle = Math.PI / 4;
-    rimLight.penumbra = 0.6;
-    rimLight.lookAt(ball.position);
-    scene.add(rimLight);
+    const spotLight = new THREE.SpotLight(0xffffff);
+    spotLight.intensity = 0.7;
+    spotLight.position.set(-5, 20, 10);
+    spotLight.lookAt(ball.position);
+    scene.add(spotLight);
 
     scene.add(group);
 
@@ -248,58 +170,24 @@ const OrbMini: React.FC<OrbMiniProps> = ({
     // Continuous rotation for visual appeal (faster for mini)
     groupRef.current.rotation.y += 0.01;
 
-    // Animate particles (simpler for mini)
-    if (particlesRef.current) {
-      const time = performance.now() * 0.001;
-      const positions = particlesRef.current.geometry.getAttribute('position');
-
-      // Simple rotation animation for mini particles
-      particlesRef.current.rotation.y = time * 0.1;
-      particlesRef.current.rotation.z = Math.sin(time * 0.3) * 0.1;
-
-      // Update particle opacity based on session state
-      if (particlesRef.current.material instanceof THREE.PointsMaterial) {
-        const targetOpacity = isSessionActive ? 0.7 : 0.3;
-        particlesRef.current.material.opacity += (targetOpacity - particlesRef.current.material.opacity) * 0.05;
-      }
-    }
-
-    // Update material color based on connection status (futuristic theme)
-    if (ballRef.current.material instanceof THREE.MeshPhysicalMaterial) {
-      const colors = (() => {
+    // Update material color based on connection status (black/white theme)
+    if (ballRef.current.material instanceof THREE.MeshLambertMaterial) {
+      const targetColor = (() => {
         switch (connectionStatus) {
           case 'connected':
-            return {
-              base: 0x2050F0,    // Electric blue
-              emissive: 0xFF20FF, // Neon magenta
-              intensity: 0.3 + (currentVolume * 0.2) // Volume responsive for mini
-            };
+            return 0xffffff; // White when connected
           case 'requesting_mic':
           case 'fetching_token':
           case 'establishing_connection':
-            return {
-              base: 0x801090,    // Neon violet
-              emissive: 0x6A00FF, // Purple blend
-              intensity: 0.25 + Math.sin(Date.now() * 0.004) * 0.05 // Subtle pulsing
-            };
+            return 0x666666; // Gray when connecting
           case 'error':
-            return {
-              base: 0xFF20FF,    // Neon magenta
-              emissive: 0xF040F0, // Vivid fuchsia
-              intensity: 0.4 + Math.sin(Date.now() * 0.006) * 0.1 // Error pulsing
-            };
+            return 0x333333; // Dark gray when error
           default:
-            return {
-              base: 0x0C0722,    // Base dark
-              emissive: 0x2020A0, // Deep blue
-              intensity: 0.08
-            };
+            return 0x999999; // Medium gray when disconnected
         }
       })();
 
-      ballRef.current.material.color.setHex(colors.base);
-      ballRef.current.material.emissive.setHex(colors.emissive);
-      ballRef.current.material.emissiveIntensity = colors.intensity;
+      ballRef.current.material.color.setHex(targetColor);
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -391,22 +279,11 @@ const OrbMini: React.FC<OrbMiniProps> = ({
         className="hover:cursor-pointer aspect-square w-full transition-all duration-200 hover:scale-110"
         onClick={handleClick}
         style={{
-          filter: (() => {
-            switch (connectionStatus) {
-              case 'connected':
-                return isSessionActive
-                  ? 'drop-shadow(0 0 15px rgba(32, 80, 240, 0.6)) drop-shadow(0 0 30px rgba(255, 32, 255, 0.3))'
-                  : 'drop-shadow(0 0 10px rgba(32, 80, 240, 0.4))';
-              case 'requesting_mic':
-              case 'fetching_token':
-              case 'establishing_connection':
-                return 'drop-shadow(0 0 12px rgba(128, 16, 144, 0.4)) drop-shadow(0 0 25px rgba(106, 0, 255, 0.2))';
-              case 'error':
-                return 'drop-shadow(0 0 18px rgba(255, 32, 255, 0.6)) drop-shadow(0 0 35px rgba(240, 64, 240, 0.3))';
-              default:
-                return 'drop-shadow(0 0 8px rgba(12, 7, 34, 0.2))';
-            }
-          })(),
+          filter: isSessionActive
+            ? 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.5))'
+            : connectionStatus !== 'disconnected'
+            ? 'drop-shadow(0 0 8px rgba(150, 150, 150, 0.3))'
+            : 'none',
           transition: 'filter 0.2s ease'
         }}
       />
