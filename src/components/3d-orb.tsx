@@ -176,21 +176,23 @@ const Orb: React.FC<OrbProps> = ({
 
     const wireframeMaterial = new THREE.LineBasicMaterial({
       color: 0xFF0080, // Bright magenta - should ALWAYS be visible
-      linewidth: 2,
+      linewidth: 10, // EXTRA THICK for maximum visibility
       transparent: false,
       opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
 
-    // 3. Inner glow mesh for emissive effect
+    // 3. Inner glow mesh DISABLED temporarily to test wireframe visibility
     const glowMaterial = new THREE.MeshBasicMaterial({
       color: new THREE.Color(colors.emissive),
       transparent: true,
-      opacity: Math.min(colors.intensity * 0.3, 0.15), // Reduced to not overpower wireframe
+      opacity: 0, // DISABLED - might be interfering with wireframe
+      visible: false,
       blending: THREE.AdditiveBlending
     });
     const glowMesh = new THREE.Mesh(icosahedronGeometry.clone(), glowMaterial);
     glowMesh.scale.setScalar(0.98); // Slightly smaller for inner glow effect
+    glowMesh.visible = false; // FORCE INVISIBLE
 
     ball.position.set(0, 0, 0);
     wireframe.position.set(0, 0, 0);
@@ -365,11 +367,11 @@ const Orb: React.FC<OrbProps> = ({
       console.log('Wireframe color set to:', wireframeRef.current.material.color.getHex().toString(16));
     }
 
-    // Update glow mesh color and intensity - ensure visibility but don't overpower wireframe
+    // Glow mesh DISABLED for debugging - might be interfering with wireframe visibility
     if (glowMeshRef.current && glowMeshRef.current.material instanceof THREE.MeshBasicMaterial) {
-      glowMeshRef.current.material.color.setHex(colors.emissive);
-      glowMeshRef.current.material.opacity = Math.min(colors.intensity * 0.3, 0.15); // Reduced to not overpower wireframe
-      glowMeshRef.current.visible = true;
+      glowMeshRef.current.visible = false; // FORCE DISABLED
+      glowMeshRef.current.material.opacity = 0;
+      console.log('Glow mesh disabled for wireframe debugging');
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
