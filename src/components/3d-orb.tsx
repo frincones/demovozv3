@@ -47,7 +47,18 @@ const Orb: React.FC<OrbProps> = ({
   }, []);
 
   useEffect(() => {
+    console.log('🔥 State change detected:', {
+      isSessionActive,
+      connectionStatus,
+      isSpeaking,
+      currentVolume,
+      ballExists: !!ballRef.current,
+      wireframeExists: !!wireframeRef.current,
+      containerExists: !!containerRef.current
+    });
+
     if (isSessionActive && ballRef.current) {
+      console.log('✅ Session active - updating morph');
       // Use a minimum volume for breathing effect when agent is speaking
       const effectiveVolume = isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume;
       updateBallMorph(ballRef.current, effectiveVolume);
@@ -64,6 +75,7 @@ const Orb: React.FC<OrbProps> = ({
       ballRef.current &&
       originalPositionsRef.current
     ) {
+      console.log('🔄 Session inactive - resetting morph');
       resetBallMorph(ballRef.current, originalPositionsRef.current);
 
       // Reset wireframe and glow mesh too
@@ -73,6 +85,20 @@ const Orb: React.FC<OrbProps> = ({
       if (glowMeshRef.current) {
         resetBallMorph(glowMeshRef.current, originalPositionsRef.current);
       }
+    }
+
+    // FORCE visibility check after any state change
+    if (wireframeRef.current) {
+      wireframeRef.current.visible = true;
+      console.log('🔍 Wireframe forced visible:', wireframeRef.current.visible);
+    }
+    if (ballRef.current) {
+      ballRef.current.visible = true;
+      console.log('🔍 Ball forced visible:', ballRef.current.visible);
+    }
+    if (groupRef.current) {
+      groupRef.current.visible = true;
+      console.log('🔍 Group forced visible:', groupRef.current.visible);
     }
   }, [currentVolume, isSessionActive, isSpeaking, intensity]);
 
@@ -364,7 +390,19 @@ const Orb: React.FC<OrbProps> = ({
       wireframeRef.current.material.color.setHex(0xFF0080); // Bright magenta
       wireframeRef.current.material.transparent = false;
       wireframeRef.current.material.opacity = 1.0;
-      console.log('Wireframe color set to:', wireframeRef.current.material.color.getHex().toString(16));
+
+      // Extra debugging every 60 frames (1 second at 60fps)
+      if (performance.now() % 1000 < 16) {
+        console.log('🟦 RENDER STATUS:', {
+          wireframeVisible: wireframeRef.current.visible,
+          ballVisible: ballRef.current?.visible,
+          groupVisible: groupRef.current?.visible,
+          containerExists: !!containerRef.current,
+          rendererExists: !!rendererRef.current,
+          connectionStatus,
+          isSessionActive
+        });
+      }
     }
 
     // Glow mesh DISABLED for debugging - might be interfering with wireframe visibility
@@ -480,14 +518,50 @@ const Orb: React.FC<OrbProps> = ({
   };
 
   const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
-    // Recreate the wireframe geometry (solid color, no gradients)
-    if (ballRef.current) {
-      const originalGeometry = new THREE.IcosahedronGeometry(10, 8);
-      const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
+    console.log('🔄 RESET WIREFRAME MORPH - ANTES', {
+      visible: wireframe.visible,
+      material: wireframe.material,
+      geometry: wireframe.geometry
+    });
 
-      wireframe.geometry.dispose();
-      wireframe.geometry = edgesGeometry;
+    // DON'T recreate geometry - just reset positions to match ball
+    if (ballRef.current && originalPositionsRef.current) {
+      const geometry = wireframe.geometry as THREE.BufferGeometry;
+      const positionAttribute = geometry.getAttribute("position");
+
+      // Reset wireframe to follow the reset ball positions
+      const ballGeometry = ballRef.current.geometry as THREE.BufferGeometry;
+      const ballPositions = ballGeometry.getAttribute("position");
+
+      for (let i = 0; i < positionAttribute.count; i++) {
+        const ballIndex = Math.floor(i / 2);
+        if (ballIndex < ballPositions.count) {
+          positionAttribute.setXYZ(
+            i,
+            ballPositions.getX(ballIndex),
+            ballPositions.getY(ballIndex),
+            ballPositions.getZ(ballIndex)
+          );
+        }
+      }
+
+      positionAttribute.needsUpdate = true;
+
+      // FORCE wireframe to be visible and bright magenta
+      wireframe.visible = true;
+      if (wireframe.material instanceof THREE.LineBasicMaterial) {
+        wireframe.material.color.setHex(0xFF0080);
+        wireframe.material.visible = true;
+        wireframe.material.transparent = false;
+        wireframe.material.opacity = 1.0;
+      }
     }
+
+    console.log('🔄 RESET WIREFRAME MORPH - DESPUÉS', {
+      visible: wireframe.visible,
+      material: wireframe.material,
+      geometry: wireframe.geometry
+    });
   };
 
   const handleClick = () => {
