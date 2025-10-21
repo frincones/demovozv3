@@ -340,10 +340,56 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       }
     })();
 
-    // Update wireframe visibility and ensure it's always visible
-    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
-      wireframeRef.current.visible = true;
+    // Update wireframe gradient colors dynamically based on connection status
+    if (wireframeRef.current && wireframeRef.current.geometry) {
+      const colorAttribute = wireframeRef.current.geometry.getAttribute('color');
+      if (colorAttribute) {
+        const positionAttribute = wireframeRef.current.geometry.getAttribute('position');
+
+        // Define gradient colors based on connection status
+        let topColor, bottomColor;
+        switch (connectionStatus) {
+          case 'connected':
+            topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+            bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
+            break;
+          case 'requesting_mic':
+          case 'fetching_token':
+          case 'establishing_connection':
+            topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
+            bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
+            break;
+          case 'error':
+            topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
+            bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
+            break;
+          default:
+            topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
+            bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
+            break;
+        }
+
+        // Update gradient colors for each vertex
+        for (let i = 0; i < positionAttribute.count; i++) {
+          const y = positionAttribute.getY(i);
+          const normalizedY = (y + 6) / 12; // Normalize to 0-1 range for mini (radius 6)
+
+          // Interpolate between bottom and top colors
+          const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
+          const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
+          const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
+
+          colorAttribute.setXYZ(i, r, g, b);
+        }
+
+        colorAttribute.needsUpdate = true;
+      }
+
+      // Update wireframe visibility and opacity
+      if (wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
+        wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
+        wireframeRef.current.visible = true;
+      }
     }
 
     // Update glow mesh color and intensity - ensure visibility
