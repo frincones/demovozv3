@@ -156,34 +156,14 @@ const OrbMini: React.FC<OrbMiniProps> = ({
     });
     const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with gradient color control using EdgesGeometry
+    // 2. Wireframe with solid bright color for mini orb
     const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
-    const edgePositions = edgesGeometry.getAttribute('position');
-    const edgeColors = new Float32Array(edgePositions.count * 3);
-
-    // Apply gradient from electric blue to magenta based on vertex position
-    for (let i = 0; i < edgePositions.count; i++) {
-      const y = edgePositions.getY(i);
-      const normalizedY = (y + 6) / 12; // Normalize to 0-1 range for mini (radius 6)
-
-      // Gradient from electric blue (bottom) to magenta (top)
-      const r = 0.125 + normalizedY * 0.875;
-      const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13;
-      const b = 0.94 + normalizedY * 0.06;
-
-      edgeColors[i * 3] = r;
-      edgeColors[i * 3 + 1] = g;
-      edgeColors[i * 3 + 2] = b;
-    }
-
-    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
 
     const wireframeMaterial = new THREE.LineBasicMaterial({
-      vertexColors: true,
+      color: 0x20FFFF, // Bright cyan-magenta color that should always be visible
       linewidth: 1.5,
       transparent: true,
-      opacity: 1.0,
-      color: 0xffffff // White base color for vertex colors to work properly
+      opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
 
@@ -341,9 +321,10 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       }
     })();
 
-    // Update wireframe visibility and opacity only (colors are set once at initialization)
+    // Update wireframe with fixed bright color that won't turn white
     if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.opacity = 1.0; // Always full opacity
+      wireframeRef.current.material.color.setHex(0xFF20FF); // Bright magenta - always visible
+      wireframeRef.current.material.opacity = 1.0;
       wireframeRef.current.visible = true;
     }
 

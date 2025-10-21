@@ -171,36 +171,15 @@ const Orb: React.FC<OrbProps> = ({
     });
     const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with gradient color control using EdgesGeometry
+    // 2. Wireframe with solid gradient color - using electric blue to magenta
     const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
 
-    // Create gradient-like effect by using vertex colors
-    const edgePositions = edgesGeometry.getAttribute('position');
-    const edgeColors = new Float32Array(edgePositions.count * 3);
-
-    // Apply gradient from electric blue to magenta based on vertex position
-    for (let i = 0; i < edgePositions.count; i++) {
-      const y = edgePositions.getY(i);
-      const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
-
-      // Gradient from electric blue (bottom) to magenta (top)
-      const r = 0.125 + normalizedY * 0.875; // 0.125 (blue) to 1.0 (magenta)
-      const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13; // 0.31 (blue) to 0.13 (magenta)
-      const b = 0.94 + normalizedY * 0.06; // 0.94 (blue) to 1.0 (magenta)
-
-      edgeColors[i * 3] = r;
-      edgeColors[i * 3 + 1] = g;
-      edgeColors[i * 3 + 2] = b;
-    }
-
-    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
-
+    // Use a bright, visible gradient color that won't turn white
     const wireframeMaterial = new THREE.LineBasicMaterial({
-      vertexColors: true,
+      color: 0x20FFFF, // Bright cyan-magenta color that should always be visible
       linewidth: 2,
       transparent: true,
-      opacity: 1.0,
-      color: 0xffffff // White base color for vertex colors to work properly
+      opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
 
@@ -378,9 +357,10 @@ const Orb: React.FC<OrbProps> = ({
       }
     })();
 
-    // Update wireframe visibility and opacity only (colors are set once at initialization)
+    // Update wireframe with fixed bright color that won't turn white
     if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.opacity = 1.0; // Always full opacity
+      wireframeRef.current.material.color.setHex(0xFF20FF); // Bright magenta - always visible
+      wireframeRef.current.material.opacity = 1.0;
       wireframeRef.current.visible = true;
     }
 
@@ -500,34 +480,10 @@ const Orb: React.FC<OrbProps> = ({
   };
 
   const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
-    // Recreate the wireframe geometry from the original geometry with gradient colors
+    // Recreate the wireframe geometry from the original geometry (ShaderMaterial handles colors)
     if (ballRef.current) {
       const originalGeometry = new THREE.IcosahedronGeometry(10, 8);
       const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
-
-      // Recreate gradient colors
-      const edgePositions = edgesGeometry.getAttribute('position');
-      const edgeColors = new Float32Array(edgePositions.count * 3);
-
-      // Always use the same gradient colors regardless of connection status
-      const topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
-      const bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
-
-      for (let i = 0; i < edgePositions.count; i++) {
-        const y = edgePositions.getY(i);
-        const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
-
-        // Interpolate between bottom and top colors
-        const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
-        const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
-        const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
-
-        edgeColors[i * 3] = r;
-        edgeColors[i * 3 + 1] = g;
-        edgeColors[i * 3 + 2] = b;
-      }
-
-      edgesGeometry.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
 
       wireframe.geometry.dispose();
       wireframe.geometry = edgesGeometry;
