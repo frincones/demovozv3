@@ -377,10 +377,56 @@ const Orb: React.FC<OrbProps> = ({
       }
     })();
 
-    // Update wireframe visibility and ensure it's always visible
-    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
-      wireframeRef.current.visible = true;
+    // Update wireframe gradient colors dynamically based on connection status
+    if (wireframeRef.current && wireframeRef.current.geometry) {
+      const colorAttribute = wireframeRef.current.geometry.getAttribute('color');
+      if (colorAttribute) {
+        const positionAttribute = wireframeRef.current.geometry.getAttribute('position');
+
+        // Define gradient colors based on connection status
+        let topColor, bottomColor;
+        switch (connectionStatus) {
+          case 'connected':
+            topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+            bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
+            break;
+          case 'requesting_mic':
+          case 'fetching_token':
+          case 'establishing_connection':
+            topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
+            bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
+            break;
+          case 'error':
+            topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
+            bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
+            break;
+          default:
+            topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
+            bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
+            break;
+        }
+
+        // Update gradient colors for each vertex
+        for (let i = 0; i < positionAttribute.count; i++) {
+          const y = positionAttribute.getY(i);
+          const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
+
+          // Interpolate between bottom and top colors
+          const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
+          const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
+          const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
+
+          colorAttribute.setXYZ(i, r, g, b);
+        }
+
+        colorAttribute.needsUpdate = true;
+      }
+
+      // Update wireframe visibility and opacity
+      if (wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
+        wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
+        wireframeRef.current.visible = true;
+      }
     }
 
     // Update glow mesh color and intensity - ensure visibility
@@ -488,17 +534,40 @@ const Orb: React.FC<OrbProps> = ({
         }
       }
 
-      // Update gradient colors based on new positions
+      // Update gradient colors based on new positions and connection status
       const colorAttribute = geometry.getAttribute("color");
       if (colorAttribute) {
+        // Use the same color logic as the main render function
+        let topColor, bottomColor;
+        switch (connectionStatus) {
+          case 'connected':
+            topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+            bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
+            break;
+          case 'requesting_mic':
+          case 'fetching_token':
+          case 'establishing_connection':
+            topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
+            bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
+            break;
+          case 'error':
+            topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
+            bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
+            break;
+          default:
+            topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
+            bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
+            break;
+        }
+
         for (let i = 0; i < positionAttribute.count; i++) {
           const y = positionAttribute.getY(i);
           const normalizedY = (y + 15) / 30; // Adjust range for morphed geometry
 
-          // Gradient from electric blue (bottom) to magenta (top)
-          const r = 0.125 + normalizedY * 0.875;
-          const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13;
-          const b = 0.94 + normalizedY * 0.06;
+          // Interpolate between bottom and top colors
+          const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
+          const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
+          const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
 
           colorAttribute.setXYZ(i, r, g, b);
         }
@@ -519,14 +588,37 @@ const Orb: React.FC<OrbProps> = ({
       const edgePositions = edgesGeometry.getAttribute('position');
       const edgeColors = new Float32Array(edgePositions.count * 3);
 
+      // Use dynamic colors based on connection status
+      let topColor, bottomColor;
+      switch (connectionStatus) {
+        case 'connected':
+          topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+          bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
+          break;
+        case 'requesting_mic':
+        case 'fetching_token':
+        case 'establishing_connection':
+          topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
+          bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
+          break;
+        case 'error':
+          topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
+          bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
+          break;
+        default:
+          topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
+          bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
+          break;
+      }
+
       for (let i = 0; i < edgePositions.count; i++) {
         const y = edgePositions.getY(i);
         const normalizedY = (y + 10) / 20; // Normalize to 0-1 range
 
-        // Gradient from electric blue (bottom) to magenta (top)
-        const r = 0.125 + normalizedY * 0.875;
-        const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13;
-        const b = 0.94 + normalizedY * 0.06;
+        // Interpolate between bottom and top colors
+        const r = bottomColor.r + normalizedY * (topColor.r - bottomColor.r);
+        const g = bottomColor.g + normalizedY * (topColor.g - bottomColor.g);
+        const b = bottomColor.b + normalizedY * (topColor.b - bottomColor.b);
 
         edgeColors[i * 3] = r;
         edgeColors[i * 3 + 1] = g;
