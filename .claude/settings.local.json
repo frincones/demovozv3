@@ -15,7 +15,9 @@
       "WebFetch(domain:openai-realtime-blocks.vercel.app)",
       "Read(//c/Users/freddyrs/OneDrive - Cegeka/Desktop/DEMOS TDX/Lirvan/**)",
       "Bash(npm:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "Bash(git config:*)",
+      "Bash(git remote set-url:*)"
     ],
     "deny": [],
     "ask": []
