@@ -31,6 +31,8 @@ const OrbMini: React.FC<OrbMiniProps> = ({
   const groupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const ballRef = useRef<THREE.Mesh | null>(null);
+  const wireframeRef = useRef<THREE.LineSegments | null>(null);
+  const glowMeshRef = useRef<THREE.Mesh | null>(null);
   const originalPositionsRef = useRef<Float32Array | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
@@ -145,29 +147,71 @@ const OrbMini: React.FC<OrbMiniProps> = ({
 
     const colors = getFuturisticColors();
 
-    // Use MeshPhysicalMaterial for mini version with reduced settings
-    const futuristicMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(colors.base),
-      metalness: 0.03,
-      roughness: 0.25,
-      wireframe: true,
-      wireframeLinewidth: 1.5,
-      emissive: new THREE.Color(colors.emissive),
-      emissiveIntensity: colors.intensity,
+    // Create dual-geometry system for mini orb like main orb
+    // 1. Invisible base mesh for morphing functionality
+    const baseMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
-      opacity: 0.85,
-      flatShading: false
+      opacity: 0,
+      visible: false
     });
+    const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    const ball = new THREE.Mesh(icosahedronGeometry, futuristicMaterial);
+    // 2. Wireframe with gradient color control using EdgesGeometry
+    const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
+    const edgePositions = edgesGeometry.getAttribute('position');
+    const edgeColors = new Float32Array(edgePositions.count * 3);
+
+    // Apply gradient from electric blue to magenta based on vertex position
+    for (let i = 0; i < edgePositions.count; i++) {
+      const y = edgePositions.getY(i);
+      const normalizedY = (y + 6) / 12; // Normalize to 0-1 range for mini (radius 6)
+
+      // Gradient from electric blue (bottom) to magenta (top)
+      const r = 0.125 + normalizedY * 0.875;
+      const g = 0.31 * (1 - normalizedY) + normalizedY * 0.13;
+      const b = 0.94 + normalizedY * 0.06;
+
+      edgeColors[i * 3] = r;
+      edgeColors[i * 3 + 1] = g;
+      edgeColors[i * 3 + 2] = b;
+    }
+
+    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(edgeColors, 3));
+
+    const wireframeMaterial = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      linewidth: 1.5,
+      transparent: true,
+      opacity: 1.0
+    });
+    const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
+
+    // 3. Inner glow mesh for emissive effect
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(colors.emissive),
+      transparent: true,
+      opacity: Math.max(colors.intensity * 0.4, 0.1),
+      blending: THREE.AdditiveBlending
+    });
+    const glowMesh = new THREE.Mesh(icosahedronGeometry.clone(), glowMaterial);
+    glowMesh.scale.setScalar(0.98);
+
     ball.position.set(0, 0, 0);
+    wireframe.position.set(0, 0, 0);
+    glowMesh.position.set(0, 0, 0);
+
     ballRef.current = ball;
+    wireframeRef.current = wireframe;
+    glowMeshRef.current = glowMesh;
 
     // Store the original positions of the vertices for smooth animation
     const positionAttribute = ball.geometry.getAttribute('position');
     originalPositionsRef.current = new Float32Array(positionAttribute.array);
 
+    // Add all elements to the group
     group.add(ball);
+    group.add(wireframe);
+    group.add(glowMesh);
 
     // Create simpler particle halo for mini version
     const particleCount = 60; // Fewer particles for mini
@@ -264,42 +308,49 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       }
     }
 
-    // Update material color based on connection status (futuristic theme)
-    if (ballRef.current.material instanceof THREE.MeshPhysicalMaterial) {
-      const colors = (() => {
-        switch (connectionStatus) {
-          case 'connected':
-            return {
-              base: 0x2050F0,    // Electric blue
-              emissive: 0xFF20FF, // Neon magenta
-              intensity: 0.3 + (currentVolume * 0.2) // Volume responsive for mini
-            };
-          case 'requesting_mic':
-          case 'fetching_token':
-          case 'establishing_connection':
-            return {
-              base: 0x801090,    // Neon violet
-              emissive: 0x6A00FF, // Purple blend
-              intensity: 0.25 + Math.sin(Date.now() * 0.004) * 0.05 // Subtle pulsing
-            };
-          case 'error':
-            return {
-              base: 0xFF20FF,    // Neon magenta
-              emissive: 0xF040F0, // Vivid fuchsia
-              intensity: 0.4 + Math.sin(Date.now() * 0.006) * 0.1 // Error pulsing
-            };
-          default:
-            return {
-              base: 0x0C0722,    // Base dark
-              emissive: 0x2020A0, // Deep blue
-              intensity: 0.08
-            };
-        }
-      })();
+    // Update wireframe and glow colors based on connection status (futuristic theme)
+    const colors = (() => {
+      switch (connectionStatus) {
+        case 'connected':
+          return {
+            base: 0x2050F0,    // Electric blue
+            emissive: 0xFF20FF, // Neon magenta
+            intensity: 0.3 + (currentVolume * 0.2) // Volume responsive for mini
+          };
+        case 'requesting_mic':
+        case 'fetching_token':
+        case 'establishing_connection':
+          return {
+            base: 0x801090,    // Neon violet
+            emissive: 0x6A00FF, // Purple blend
+            intensity: 0.25 + Math.sin(Date.now() * 0.004) * 0.05 // Subtle pulsing
+          };
+        case 'error':
+          return {
+            base: 0xFF20FF,    // Neon magenta
+            emissive: 0xF040F0, // Vivid fuchsia
+            intensity: 0.4 + Math.sin(Date.now() * 0.006) * 0.1 // Error pulsing
+          };
+        default:
+          return {
+            base: 0x0C0722,    // Base dark
+            emissive: 0x2020A0, // Deep blue
+            intensity: 0.08
+          };
+      }
+    })();
 
-      ballRef.current.material.color.setHex(colors.base);
-      ballRef.current.material.emissive.setHex(colors.emissive);
-      ballRef.current.material.emissiveIntensity = colors.intensity;
+    // Update wireframe visibility and ensure it's always visible
+    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
+      wireframeRef.current.material.opacity = connectionStatus === 'connected' ? 1.0 : 0.8;
+      wireframeRef.current.visible = true;
+    }
+
+    // Update glow mesh color and intensity - ensure visibility
+    if (glowMeshRef.current && glowMeshRef.current.material instanceof THREE.MeshBasicMaterial) {
+      glowMeshRef.current.material.color.setHex(colors.emissive);
+      glowMeshRef.current.material.opacity = Math.max(colors.intensity * 0.4, 0.1);
+      glowMeshRef.current.visible = true;
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
