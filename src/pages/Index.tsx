@@ -106,63 +106,8 @@ const Index = () => {
   };
 
   return (
-    <div
-      className="min-h-screen overflow-hidden relative"
-      style={{
-        background: 'radial-gradient(ellipse at 50% 55%, hsl(265 65% 15%) 0%, hsl(265 54% 12%) 55%, hsl(255 85% 6%) 100%)'
-      }}
-    >
-      {/* Enhanced futuristic ambient background effects */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Electric blue primary glow */}
-        <motion.div
-          className="absolute top-1/4 -left-32 w-96 h-96 rounded-full blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, hsl(212 88% 59% / 0.3) 0%, hsl(212 88% 59% / 0.1) 50%, transparent 100%)'
-          }}
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.4, 0.7, 0.4],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        {/* Neon magenta accent glow */}
-        <motion.div
-          className="absolute bottom-1/4 -right-32 w-96 h-96 rounded-full blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, hsl(300 100% 56% / 0.3) 0%, hsl(300 100% 56% / 0.1) 50%, transparent 100%)'
-          }}
-          animate={{
-            scale: [1.2, 1, 1.2],
-            opacity: [0.6, 0.3, 0.6],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        {/* Violet center glow */}
-        <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-3xl"
-          style={{
-            background: 'radial-gradient(circle, hsl(285 64% 31% / 0.15) 0%, hsl(285 64% 31% / 0.05) 60%, transparent 100%)'
-          }}
-          animate={{
-            scale: [0.8, 1.1, 0.8],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      </div>
+    <div className="min-h-screen bg-white overflow-hidden relative">
+      {/* Clean white background - no ambient effects */}
 
       {/* Consent banner */}
       <AnimatePresence>

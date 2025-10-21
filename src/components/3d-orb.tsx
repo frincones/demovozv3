@@ -29,6 +29,8 @@ const Orb: React.FC<OrbProps> = ({
   const groupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const ballRef = useRef<THREE.Mesh | null>(null);
+  const wireframeRef = useRef<THREE.LineSegments | null>(null);
+  const glowMeshRef = useRef<THREE.Mesh | null>(null);
   const originalPositionsRef = useRef<Float32Array | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const particlesRef = useRef<THREE.Points | null>(null);
@@ -49,12 +51,28 @@ const Orb: React.FC<OrbProps> = ({
       // Use a minimum volume for breathing effect when agent is speaking
       const effectiveVolume = isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume;
       updateBallMorph(ballRef.current, effectiveVolume);
+
+      // Also update wireframe and glow mesh morphing
+      if (wireframeRef.current) {
+        updateWireframeMorph(wireframeRef.current, effectiveVolume);
+      }
+      if (glowMeshRef.current) {
+        updateBallMorph(glowMeshRef.current, effectiveVolume);
+      }
     } else if (
       !isSessionActive &&
       ballRef.current &&
       originalPositionsRef.current
     ) {
       resetBallMorph(ballRef.current, originalPositionsRef.current);
+
+      // Reset wireframe and glow mesh too
+      if (wireframeRef.current) {
+        resetWireframeMorph(wireframeRef.current, originalPositionsRef.current);
+      }
+      if (glowMeshRef.current) {
+        resetBallMorph(glowMeshRef.current, originalPositionsRef.current);
+      }
     }
   }, [currentVolume, isSessionActive, isSpeaking, intensity]);
 
@@ -144,30 +162,51 @@ const Orb: React.FC<OrbProps> = ({
 
     const colors = getFuturisticColors();
 
-    // Use MeshPhysicalMaterial for better PBR rendering with emissive properties
-    const futuristicMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color(colors.base),
-      metalness: 0.05,
-      roughness: 0.2,
-      wireframe: true,
-      wireframeLinewidth: 2,
-      emissive: new THREE.Color(colors.emissive),
-      emissiveIntensity: colors.intensity,
+    // Create both solid mesh and wireframe edges for complete color control
+    // 1. Invisible base mesh for morphing functionality
+    const baseMaterial = new THREE.MeshBasicMaterial({
       transparent: true,
-      opacity: 0.9,
-      // Enhanced wireframe appearance
-      flatShading: false
+      opacity: 0,
+      visible: false
     });
+    const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    const ball = new THREE.Mesh(icosahedronGeometry, futuristicMaterial);
+    // 2. Wireframe with full color control using EdgesGeometry
+    const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
+    const wireframeMaterial = new THREE.LineBasicMaterial({
+      color: new THREE.Color(colors.base),
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.9
+    });
+    const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
+
+    // 3. Inner glow mesh for emissive effect
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(colors.emissive),
+      transparent: true,
+      opacity: colors.intensity * 0.3,
+      blending: THREE.AdditiveBlending
+    });
+    const glowMesh = new THREE.Mesh(icosahedronGeometry.clone(), glowMaterial);
+    glowMesh.scale.setScalar(0.98); // Slightly smaller for inner glow effect
+
     ball.position.set(0, 0, 0);
+    wireframe.position.set(0, 0, 0);
+    glowMesh.position.set(0, 0, 0);
+
     ballRef.current = ball;
+    wireframeRef.current = wireframe;
+    glowMeshRef.current = glowMesh;
 
     // Store the original positions of the vertices for smooth animation
     const positionAttribute = ball.geometry.getAttribute('position');
     originalPositionsRef.current = new Float32Array(positionAttribute.array);
 
+    // Add all elements to the group
     group.add(ball);
+    group.add(wireframe);
+    group.add(glowMesh);
 
     // Create particle halo system
     const particleCount = 120;
@@ -284,42 +323,48 @@ const Orb: React.FC<OrbProps> = ({
       }
     }
 
-    // Update material color based on connection status (futuristic theme)
-    if (ballRef.current.material instanceof THREE.MeshPhysicalMaterial) {
-      const colors = (() => {
-        switch (connectionStatus) {
-          case 'connected':
-            return {
-              base: 0x2050F0,    // Electric blue
-              emissive: 0xFF20FF, // Neon magenta
-              intensity: 0.4 + (currentVolume * 0.3) // Volume responsive intensity
-            };
-          case 'requesting_mic':
-          case 'fetching_token':
-          case 'establishing_connection':
-            return {
-              base: 0x801090,    // Neon violet
-              emissive: 0x6A00FF, // Purple blend
-              intensity: 0.3 + Math.sin(Date.now() * 0.003) * 0.1 // Pulsing effect
-            };
-          case 'error':
-            return {
-              base: 0xFF20FF,    // Neon magenta
-              emissive: 0xF040F0, // Vivid fuchsia
-              intensity: 0.5 + Math.sin(Date.now() * 0.005) * 0.2 // Error pulsing
-            };
-          default:
-            return {
-              base: 0x0C0722,    // Base dark
-              emissive: 0x2020A0, // Deep blue
-              intensity: 0.1
-            };
-        }
-      })();
+    // Update wireframe and glow colors based on connection status (futuristic theme)
+    const colors = (() => {
+      switch (connectionStatus) {
+        case 'connected':
+          return {
+            base: 0x2050F0,    // Electric blue
+            emissive: 0xFF20FF, // Neon magenta
+            intensity: 0.4 + (currentVolume * 0.3) // Volume responsive intensity
+          };
+        case 'requesting_mic':
+        case 'fetching_token':
+        case 'establishing_connection':
+          return {
+            base: 0x801090,    // Neon violet
+            emissive: 0x6A00FF, // Purple blend
+            intensity: 0.3 + Math.sin(Date.now() * 0.003) * 0.1 // Pulsing effect
+          };
+        case 'error':
+          return {
+            base: 0xFF20FF,    // Neon magenta
+            emissive: 0xF040F0, // Vivid fuchsia
+            intensity: 0.5 + Math.sin(Date.now() * 0.005) * 0.2 // Error pulsing
+          };
+        default:
+          return {
+            base: 0x0C0722,    // Base dark
+            emissive: 0x2020A0, // Deep blue
+            intensity: 0.1
+          };
+      }
+    })();
 
-      ballRef.current.material.color.setHex(colors.base);
-      ballRef.current.material.emissive.setHex(colors.emissive);
-      ballRef.current.material.emissiveIntensity = colors.intensity;
+    // Update wireframe color
+    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
+      wireframeRef.current.material.color.setHex(colors.base);
+      wireframeRef.current.material.opacity = 0.9;
+    }
+
+    // Update glow mesh color and intensity
+    if (glowMeshRef.current && glowMeshRef.current.material instanceof THREE.MeshBasicMaterial) {
+      glowMeshRef.current.material.color.setHex(colors.emissive);
+      glowMeshRef.current.material.opacity = colors.intensity * 0.3;
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -398,6 +443,42 @@ const Orb: React.FC<OrbProps> = ({
     geometry.computeVertexNormals();
   };
 
+  const updateWireframeMorph = (wireframe: THREE.LineSegments, volume: number) => {
+    const geometry = wireframe.geometry as THREE.BufferGeometry;
+    const positionAttribute = geometry.getAttribute("position");
+
+    // Get the morphed positions from the main ball
+    if (ballRef.current) {
+      const ballGeometry = ballRef.current.geometry as THREE.BufferGeometry;
+      const ballPositions = ballGeometry.getAttribute("position");
+
+      // Update wireframe positions to match ball morphing
+      for (let i = 0; i < positionAttribute.count; i++) {
+        const ballIndex = Math.floor(i / 2); // Each edge connects 2 vertices
+        if (ballIndex < ballPositions.count) {
+          positionAttribute.setXYZ(
+            i,
+            ballPositions.getX(ballIndex),
+            ballPositions.getY(ballIndex),
+            ballPositions.getZ(ballIndex)
+          );
+        }
+      }
+
+      positionAttribute.needsUpdate = true;
+    }
+  };
+
+  const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
+    // Recreate the wireframe geometry from the original geometry
+    if (ballRef.current) {
+      const originalGeometry = new THREE.IcosahedronGeometry(10, 8);
+      const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
+      wireframe.geometry.dispose();
+      wireframe.geometry = edgesGeometry;
+    }
+  };
+
   const handleClick = () => {
     if (onClick) {
       onClick();
@@ -433,16 +514,16 @@ const Orb: React.FC<OrbProps> = ({
             switch (connectionStatus) {
               case 'connected':
                 return isSessionActive
-                  ? 'drop-shadow(0 0 30px rgba(32, 80, 240, 0.6)) drop-shadow(0 0 60px rgba(255, 32, 255, 0.4))'
-                  : 'drop-shadow(0 0 20px rgba(32, 80, 240, 0.4))';
+                  ? 'drop-shadow(0 0 40px rgba(32, 80, 240, 0.8)) drop-shadow(0 0 80px rgba(255, 32, 255, 0.6))'
+                  : 'drop-shadow(0 0 30px rgba(32, 80, 240, 0.6))';
               case 'requesting_mic':
               case 'fetching_token':
               case 'establishing_connection':
-                return 'drop-shadow(0 0 25px rgba(128, 16, 144, 0.5)) drop-shadow(0 0 50px rgba(106, 0, 255, 0.3))';
+                return 'drop-shadow(0 0 35px rgba(128, 16, 144, 0.7)) drop-shadow(0 0 70px rgba(106, 0, 255, 0.5))';
               case 'error':
-                return 'drop-shadow(0 0 35px rgba(255, 32, 255, 0.7)) drop-shadow(0 0 70px rgba(240, 64, 240, 0.4))';
+                return 'drop-shadow(0 0 45px rgba(255, 32, 255, 0.9)) drop-shadow(0 0 90px rgba(240, 64, 240, 0.6))';
               default:
-                return 'drop-shadow(0 0 15px rgba(12, 7, 34, 0.3))';
+                return 'drop-shadow(0 0 25px rgba(12, 7, 34, 0.5))';
             }
           })(),
           transition: 'filter 0.3s ease'
