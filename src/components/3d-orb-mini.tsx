@@ -161,7 +161,7 @@ const OrbMini: React.FC<OrbMiniProps> = ({
 
     // Create vertex colors for gradient effect
     const positions = edgesGeometry.getAttribute('position');
-    const colors = new Float32Array(positions.count * 3);
+    const vertexColors = new Float32Array(positions.count * 3);
 
     // Apply blue to magenta gradient based on Y position (scaled for mini radius)
     for (let i = 0; i < positions.count; i++) {
@@ -174,12 +174,12 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       const g = 0.314 + normalizedY * (0.125 - 0.314);
       const b = 0.941 + normalizedY * (1.0 - 0.941);
 
-      colors[i * 3] = r;
-      colors[i * 3 + 1] = g;
-      colors[i * 3 + 2] = b;
+      vertexColors[i * 3] = r;
+      vertexColors[i * 3 + 1] = g;
+      vertexColors[i * 3 + 2] = b;
     }
 
-    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
 
     const wireframeMaterial = new THREE.LineBasicMaterial({
       vertexColors: true,
