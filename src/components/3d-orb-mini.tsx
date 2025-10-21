@@ -343,22 +343,20 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       }
     })();
 
-    // Force gradient colors to be preserved in all states
+    // FORCE mini wireframe gradient colors to be correct in ALL states
     if (wireframeRef.current && wireframeRef.current.geometry) {
       wireframeRef.current.visible = true;
 
-      // Force recreate gradient colors if they're missing or corrupted
-      const colorAttribute = wireframeRef.current.geometry.getAttribute('color');
-      if (!colorAttribute || colorAttribute.array.length === 0) {
-        console.log('Recreating missing mini wireframe colors for state:', connectionStatus);
-
-        const positions = wireframeRef.current.geometry.getAttribute('position');
+      // ALWAYS force correct gradient colors - no checks, just force
+      const positions = wireframeRef.current.geometry.getAttribute('position');
+      if (positions) {
         const vertexColors = new Float32Array(positions.count * 3);
 
         for (let i = 0; i < positions.count; i++) {
           const y = positions.getY(i);
           const normalizedY = Math.max(0, Math.min(1, (y + 6) / 12));
 
+          // FORCE blue to magenta gradient - these exact colors always
           const r = 0.125 + normalizedY * (1.0 - 0.125);
           const g = 0.314 + normalizedY * (0.125 - 0.314);
           const b = 0.941 + normalizedY * (1.0 - 0.941);
@@ -368,10 +366,11 @@ const OrbMini: React.FC<OrbMiniProps> = ({
           vertexColors[i * 3 + 2] = b;
         }
 
+        // FORCE set the attribute every frame
         wireframeRef.current.geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
       }
 
-      // Ensure material is correctly configured
+      // FORCE material properties every frame
       if (wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
         wireframeRef.current.material.vertexColors = true;
         wireframeRef.current.material.transparent = false;
