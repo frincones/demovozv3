@@ -156,35 +156,13 @@ const OrbMini: React.FC<OrbMiniProps> = ({
     });
     const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with proper gradient colors using vertex colors
+    // 2. Wireframe with SOLID BRIGHT COLOR for mini orb
     const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
 
-    // Create vertex colors for gradient effect
-    const positions = edgesGeometry.getAttribute('position');
-    const vertexColors = new Float32Array(positions.count * 3);
-
-    // Apply blue to magenta gradient based on Y position (scaled for mini radius)
-    for (let i = 0; i < positions.count; i++) {
-      const y = positions.getY(i);
-      const normalizedY = Math.max(0, Math.min(1, (y + 6) / 12)); // Clamp to 0-1 for radius 6
-
-      // Electric blue (bottom): rgb(32, 80, 240) = (0.125, 0.314, 0.941)
-      // Magenta (top): rgb(255, 32, 255) = (1.0, 0.125, 1.0)
-      const r = 0.125 + normalizedY * (1.0 - 0.125);
-      const g = 0.314 + normalizedY * (0.125 - 0.314);
-      const b = 0.941 + normalizedY * (1.0 - 0.941);
-
-      vertexColors[i * 3] = r;
-      vertexColors[i * 3 + 1] = g;
-      vertexColors[i * 3 + 2] = b;
-    }
-
-    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
-
     const wireframeMaterial = new THREE.LineBasicMaterial({
-      vertexColors: true,
+      color: 0xFF0080, // Bright magenta - should ALWAYS be visible
       linewidth: 1.5,
-      transparent: false, // No transparency to avoid blending issues
+      transparent: false,
       opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
@@ -343,40 +321,13 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       }
     })();
 
-    // FORCE mini wireframe gradient colors to be correct in ALL states
-    if (wireframeRef.current && wireframeRef.current.geometry) {
+    // FORCE mini wireframe to be bright magenta always
+    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
       wireframeRef.current.visible = true;
-
-      // ALWAYS force correct gradient colors - no checks, just force
-      const positions = wireframeRef.current.geometry.getAttribute('position');
-      if (positions) {
-        const vertexColors = new Float32Array(positions.count * 3);
-
-        for (let i = 0; i < positions.count; i++) {
-          const y = positions.getY(i);
-          const normalizedY = Math.max(0, Math.min(1, (y + 6) / 12));
-
-          // FORCE blue to magenta gradient - these exact colors always
-          const r = 0.125 + normalizedY * (1.0 - 0.125);
-          const g = 0.314 + normalizedY * (0.125 - 0.314);
-          const b = 0.941 + normalizedY * (1.0 - 0.941);
-
-          vertexColors[i * 3] = r;
-          vertexColors[i * 3 + 1] = g;
-          vertexColors[i * 3 + 2] = b;
-        }
-
-        // FORCE set the attribute every frame
-        wireframeRef.current.geometry.setAttribute('color', new THREE.BufferAttribute(vertexColors, 3));
-      }
-
-      // FORCE material properties every frame
-      if (wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-        wireframeRef.current.material.vertexColors = true;
-        wireframeRef.current.material.transparent = false;
-        wireframeRef.current.material.opacity = 1.0;
-        wireframeRef.current.material.needsUpdate = true;
-      }
+      wireframeRef.current.material.color.setHex(0xFF0080); // Bright magenta
+      wireframeRef.current.material.transparent = false;
+      wireframeRef.current.material.opacity = 1.0;
+      console.log('Mini wireframe color set to:', wireframeRef.current.material.color.getHex().toString(16));
     }
 
     // Update glow mesh color and intensity - ensure visibility but don't overpower wireframe
