@@ -156,13 +156,35 @@ const OrbMini: React.FC<OrbMiniProps> = ({
     });
     const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with solid bright color for mini orb
+    // 2. Wireframe with proper gradient colors using vertex colors
     const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
 
+    // Create vertex colors for gradient effect
+    const positions = edgesGeometry.getAttribute('position');
+    const colors = new Float32Array(positions.count * 3);
+
+    // Apply blue to magenta gradient based on Y position (scaled for mini radius)
+    for (let i = 0; i < positions.count; i++) {
+      const y = positions.getY(i);
+      const normalizedY = Math.max(0, Math.min(1, (y + 6) / 12)); // Clamp to 0-1 for radius 6
+
+      // Electric blue (bottom): rgb(32, 80, 240) = (0.125, 0.314, 0.941)
+      // Magenta (top): rgb(255, 32, 255) = (1.0, 0.125, 1.0)
+      const r = 0.125 + normalizedY * (1.0 - 0.125);
+      const g = 0.314 + normalizedY * (0.125 - 0.314);
+      const b = 0.941 + normalizedY * (1.0 - 0.941);
+
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = g;
+      colors[i * 3 + 2] = b;
+    }
+
+    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
     const wireframeMaterial = new THREE.LineBasicMaterial({
-      color: 0x20FFFF, // Bright cyan-magenta color that should always be visible
+      vertexColors: true,
       linewidth: 1.5,
-      transparent: true,
+      transparent: false, // No transparency to avoid blending issues
       opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
@@ -321,10 +343,8 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       }
     })();
 
-    // Update wireframe with fixed bright color that won't turn white
-    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.color.setHex(0xFF20FF); // Bright magenta - always visible
-      wireframeRef.current.material.opacity = 1.0;
+    // NEVER touch wireframe colors - they are set once at initialization
+    if (wireframeRef.current) {
       wireframeRef.current.visible = true;
     }
 

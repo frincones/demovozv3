@@ -171,14 +171,35 @@ const Orb: React.FC<OrbProps> = ({
     });
     const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with solid gradient color - using electric blue to magenta
+    // 2. Wireframe with proper gradient colors using vertex colors
     const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
 
-    // Use a bright, visible gradient color that won't turn white
+    // Create vertex colors for gradient effect
+    const positions = edgesGeometry.getAttribute('position');
+    const colors = new Float32Array(positions.count * 3);
+
+    // Apply blue to magenta gradient based on Y position
+    for (let i = 0; i < positions.count; i++) {
+      const y = positions.getY(i);
+      const normalizedY = Math.max(0, Math.min(1, (y + 10) / 20)); // Clamp to 0-1
+
+      // Electric blue (bottom): rgb(32, 80, 240) = (0.125, 0.314, 0.941)
+      // Magenta (top): rgb(255, 32, 255) = (1.0, 0.125, 1.0)
+      const r = 0.125 + normalizedY * (1.0 - 0.125);
+      const g = 0.314 + normalizedY * (0.125 - 0.314);
+      const b = 0.941 + normalizedY * (1.0 - 0.941);
+
+      colors[i * 3] = r;
+      colors[i * 3 + 1] = g;
+      colors[i * 3 + 2] = b;
+    }
+
+    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
     const wireframeMaterial = new THREE.LineBasicMaterial({
-      color: 0x20FFFF, // Bright cyan-magenta color that should always be visible
+      vertexColors: true,
       linewidth: 2,
-      transparent: true,
+      transparent: false, // No transparency to avoid blending issues
       opacity: 1.0
     });
     const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
@@ -357,10 +378,8 @@ const Orb: React.FC<OrbProps> = ({
       }
     })();
 
-    // Update wireframe with fixed bright color that won't turn white
-    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.material.color.setHex(0xFF20FF); // Bright magenta - always visible
-      wireframeRef.current.material.opacity = 1.0;
+    // NEVER touch wireframe colors - they are set once at initialization
+    if (wireframeRef.current) {
       wireframeRef.current.visible = true;
     }
 
@@ -469,21 +488,38 @@ const Orb: React.FC<OrbProps> = ({
         }
       }
 
-      // Note: Color updates during morphing temporarily disabled to troubleshoot
-      // const colorAttribute = geometry.getAttribute("color");
-      // if (colorAttribute) {
-      //   // Update gradient colors during morph...
-      // }
+      // Do NOT update colors during morphing to preserve gradient
+      // Colors are set once at initialization and should never change
 
       positionAttribute.needsUpdate = true;
     }
   };
 
   const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
-    // Recreate the wireframe geometry from the original geometry (ShaderMaterial handles colors)
+    // Recreate the wireframe geometry with gradient colors preserved
     if (ballRef.current) {
       const originalGeometry = new THREE.IcosahedronGeometry(10, 8);
       const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
+
+      // Recreate the same gradient colors
+      const positions = edgesGeometry.getAttribute('position');
+      const colors = new Float32Array(positions.count * 3);
+
+      for (let i = 0; i < positions.count; i++) {
+        const y = positions.getY(i);
+        const normalizedY = Math.max(0, Math.min(1, (y + 10) / 20));
+
+        // Same gradient as initialization
+        const r = 0.125 + normalizedY * (1.0 - 0.125);
+        const g = 0.314 + normalizedY * (0.125 - 0.314);
+        const b = 0.941 + normalizedY * (1.0 - 0.941);
+
+        colors[i * 3] = r;
+        colors[i * 3 + 1] = g;
+        colors[i * 3 + 2] = b;
+      }
+
+      edgesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
       wireframe.geometry.dispose();
       wireframe.geometry = edgesGeometry;
