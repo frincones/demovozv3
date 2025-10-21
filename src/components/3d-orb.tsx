@@ -383,28 +383,10 @@ const Orb: React.FC<OrbProps> = ({
       if (colorAttribute) {
         const positionAttribute = wireframeRef.current.geometry.getAttribute('position');
 
-        // Define gradient colors based on connection status
-        let topColor, bottomColor;
-        switch (connectionStatus) {
-          case 'connected':
-            topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
-            bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
-            break;
-          case 'requesting_mic':
-          case 'fetching_token':
-          case 'establishing_connection':
-            topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
-            bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
-            break;
-          case 'error':
-            topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
-            bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
-            break;
-          default:
-            topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
-            bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
-            break;
-        }
+        // Always use the same gradient colors regardless of connection status
+        // This ensures wireframe colors remain identical in all states
+        const topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+        const bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
 
         // Update gradient colors for each vertex
         for (let i = 0; i < positionAttribute.count; i++) {
@@ -537,28 +519,9 @@ const Orb: React.FC<OrbProps> = ({
       // Update gradient colors based on new positions and connection status
       const colorAttribute = geometry.getAttribute("color");
       if (colorAttribute) {
-        // Use the same color logic as the main render function
-        let topColor, bottomColor;
-        switch (connectionStatus) {
-          case 'connected':
-            topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
-            bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
-            break;
-          case 'requesting_mic':
-          case 'fetching_token':
-          case 'establishing_connection':
-            topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
-            bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
-            break;
-          case 'error':
-            topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
-            bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
-            break;
-          default:
-            topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
-            bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
-            break;
-        }
+        // Always use the same gradient colors regardless of connection status
+        const topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+        const bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
 
         for (let i = 0; i < positionAttribute.count; i++) {
           const y = positionAttribute.getY(i);
@@ -588,28 +551,9 @@ const Orb: React.FC<OrbProps> = ({
       const edgePositions = edgesGeometry.getAttribute('position');
       const edgeColors = new Float32Array(edgePositions.count * 3);
 
-      // Use dynamic colors based on connection status
-      let topColor, bottomColor;
-      switch (connectionStatus) {
-        case 'connected':
-          topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
-          bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
-          break;
-        case 'requesting_mic':
-        case 'fetching_token':
-        case 'establishing_connection':
-          topColor = { r: 0.63, g: 0.0, b: 1.0 }; // Purple blend (top)
-          bottomColor = { r: 0.5, g: 0.06, b: 0.56 }; // Neon violet (bottom)
-          break;
-        case 'error':
-          topColor = { r: 0.94, g: 0.25, b: 0.94 }; // Vivid fuchsia (top)
-          bottomColor = { r: 1.0, g: 0.13, b: 1.0 }; // Neon magenta (bottom)
-          break;
-        default:
-          topColor = { r: 0.13, g: 0.13, b: 0.63 }; // Deep blue (top)
-          bottomColor = { r: 0.047, g: 0.027, b: 0.133 }; // Base dark (bottom)
-          break;
-      }
+      // Always use the same gradient colors regardless of connection status
+      const topColor = { r: 1.0, g: 0.13, b: 1.0 }; // Magenta (top)
+      const bottomColor = { r: 0.125, g: 0.31, b: 0.94 }; // Electric blue (bottom)
 
       for (let i = 0; i < edgePositions.count; i++) {
         const y = edgePositions.getY(i);
