@@ -9,7 +9,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <div style={{ backgroundColor: 'black', minHeight: '100vh', width: '100%' }}>
+  <div style={{ backgroundColor: 'white', minHeight: '100vh', width: '100%' }}>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

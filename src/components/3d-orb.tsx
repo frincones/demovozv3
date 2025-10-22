@@ -302,12 +302,12 @@ const Orb: React.FC<OrbProps> = ({
 
       {/* Status indicator */}
       <div className="text-center space-y-2">
-        <p className="text-sm text-white">
+        <p className="text-sm text-black">
           {getStatusText()}
         </p>
 
         {/* Connection status for debugging */}
-        <div className="text-xs text-white opacity-50">
+        <div className="text-xs text-black opacity-50">
           Status: {connectionStatus} | Volume: {currentVolume.toFixed(3)} | Active: {isSessionActive ? 'YES' : 'NO'}
         </div>
       </div>
