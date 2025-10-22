@@ -57,22 +57,9 @@ const Orb: React.FC<OrbProps> = ({
     });
 
     if (isSessionActive && ballRef.current) {
-      // Calculate effective volume for different states
-      let effectiveVolume = currentVolume;
-
-      if (isSpeaking) {
-        // When agent is speaking, use actual volume + minimum breathing effect
-        effectiveVolume = Math.max(currentVolume, 0.2);
-        console.log('🗣️ Agent speaking - volume:', effectiveVolume.toFixed(3));
-      } else if (isListening) {
-        // When listening, use actual volume + smaller minimum for user feedback
-        effectiveVolume = Math.max(currentVolume, 0.1);
-        console.log('👂 User speaking - volume:', effectiveVolume.toFixed(3));
-      } else {
-        // Connected but idle - subtle breathing
-        effectiveVolume = Math.max(currentVolume, 0.05);
-        console.log('💤 Idle connected - volume:', effectiveVolume.toFixed(3));
-      }
+      // Use a minimum volume for breathing effect when agent is speaking
+      const effectiveVolume = isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume;
+      console.log('✅ Morphing ball - effectiveVolume:', effectiveVolume.toFixed(3));
 
       updateBallMorph(ballRef.current, effectiveVolume);
 
@@ -93,7 +80,7 @@ const Orb: React.FC<OrbProps> = ({
         resetWireframeMorph(wireframeRef.current, originalPositionsRef.current);
       }
     }
-  }, [currentVolume, isSessionActive, isSpeaking, isListening, intensity]);
+  }, [currentVolume, isSessionActive, isSpeaking, intensity]);
 
   const cleanup = () => {
     if (rendererRef.current) {
@@ -287,35 +274,24 @@ const Orb: React.FC<OrbProps> = ({
       );
 
       const offset = 10; // Base radius of the icosahedron
-      const amp = 3.0; // Increased amplitude for more dramatic effect
+      const amp = 2.5; // Amplitude for dramatic effect (mismo que backup)
       const time = window.performance.now();
       vertex.normalize();
 
-      // Different noise frequencies for different states
-      let rf = 0.00001; // Base noise frequency
-      let volumeMultiplier = 4;
-
-      if (isSpeaking) {
-        // Faster, more energetic movement when agent speaks
-        rf = 0.00003;
-        volumeMultiplier = 6;
-      } else if (isListening) {
-        // Medium energy when user speaks
-        rf = 0.00002;
-        volumeMultiplier = 5;
-      }
+      // Noise frequency - controls the organic movement (mismo que backup)
+      const rf = 0.00001;
 
       // Calculate the distance from center with noise and volume influence
       const distance =
         offset +
-        volume * volumeMultiplier * intensity + // Volume effect amplified by intensity and state
+        volume * 4 * intensity + // Volume effect amplified by intensity (mismo que backup)
         noise(
           vertex.x + time * rf * 7,
           vertex.y + time * rf * 8,
           vertex.z + time * rf * 9,
         ) *
           amp *
-          (volume + 0.1) * intensity; // Ensure some noise even at low volume
+          volume * intensity; // Noise effect also amplified (mismo que backup)
 
       vertex.multiplyScalar(distance);
 
@@ -433,7 +409,9 @@ const Orb: React.FC<OrbProps> = ({
         <div className="text-xs text-black opacity-50">
           Status: {connectionStatus} | Volume: {currentVolume.toFixed(3)} | Active: {isSessionActive ? 'YES' : 'NO'}
           <br />
-          Speaking: {isSpeaking ? 'YES' : 'NO'} | Listening: {isListening ? 'YES' : 'NO'}
+          Speaking: {isSpeaking ? 'YES' : 'NO'} | EffectiveVol: {
+            isSessionActive ? (isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume).toFixed(3) : '0.000'
+          }
         </div>
       </div>
     </div>
