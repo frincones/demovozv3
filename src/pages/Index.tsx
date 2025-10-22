@@ -152,6 +152,7 @@ const Index = () => {
             isSessionActive={lirvana.isConnected}
             connectionStatus={lirvana.connectionStatus}
             isSpeaking={lirvana.isSpeaking}
+            isListening={lirvana.isListening}
           />
         </motion.div>
 
