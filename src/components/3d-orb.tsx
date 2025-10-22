@@ -138,17 +138,19 @@ const Orb: React.FC<OrbProps> = ({
       const y = icosahedronGeometry.attributes.position.getY(i);
       const z = icosahedronGeometry.attributes.position.getZ(i);
 
-      // Calculate gradient factor based on position (0 = blue, 1 = magenta)
+      // Calculate gradient factor based on position (0 = primary blue, 1 = accent cyan)
       const gradientFactor = (y + 10) / 20; // Normalize Y position to 0-1
       const clampedFactor = Math.max(0, Math.min(1, gradientFactor));
 
-      // Interpolate between electric blue (0x2050F0) and neon magenta (0xFF20FF)
-      const blueR = 0x20 / 255, blueG = 0x50 / 255, blueB = 0xF0 / 255;
-      const magentaR = 0xFF / 255, magentaG = 0x20 / 255, magentaB = 0xFF / 255;
+      // Interpolate between primary blue (220 100% 60%) and accent cyan (180 100% 60%)
+      // Primary: hsl(220, 100%, 60%) = #3366FF
+      // Accent: hsl(180, 100%, 60%) = #00CCFF
+      const primaryR = 0x33 / 255, primaryG = 0x66 / 255, primaryB = 0xFF / 255;
+      const accentR = 0x00 / 255, accentG = 0xCC / 255, accentB = 0xFF / 255;
 
-      colors[i * 3] = blueR + (magentaR - blueR) * clampedFactor;     // R
-      colors[i * 3 + 1] = blueG + (magentaG - blueG) * clampedFactor; // G
-      colors[i * 3 + 2] = blueB + (magentaB - blueB) * clampedFactor; // B
+      colors[i * 3] = primaryR + (accentR - primaryR) * clampedFactor;     // R
+      colors[i * 3 + 1] = primaryG + (accentG - primaryG) * clampedFactor; // G
+      colors[i * 3 + 2] = primaryB + (accentB - primaryB) * clampedFactor; // B
     }
 
     icosahedronGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
