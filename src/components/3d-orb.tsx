@@ -12,6 +12,7 @@ interface OrbProps {
   isSessionActive?: boolean;
   connectionStatus?: 'disconnected' | 'requesting_mic' | 'fetching_token' | 'establishing_connection' | 'connected' | 'error';
   isSpeaking?: boolean;
+  isListening?: boolean;
 }
 
 const Orb: React.FC<OrbProps> = ({
@@ -21,7 +22,8 @@ const Orb: React.FC<OrbProps> = ({
   currentVolume = 0,
   isSessionActive = false,
   connectionStatus = 'disconnected',
-  isSpeaking = false
+  isSpeaking = false,
+  isListening = false
 }) => {
 
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -45,11 +47,33 @@ const Orb: React.FC<OrbProps> = ({
   }, []);
 
   useEffect(() => {
-    console.log('🔄 STATE CHANGE:', { isSessionActive, connectionStatus, ballExists: !!ballRef.current });
+    console.log('🔄 STATE CHANGE:', {
+      isSessionActive,
+      connectionStatus,
+      isSpeaking,
+      isListening,
+      currentVolume: currentVolume.toFixed(3),
+      ballExists: !!ballRef.current
+    });
 
     if (isSessionActive && ballRef.current) {
-      console.log('✅ Morphing ball');
-      const effectiveVolume = isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume;
+      // Calculate effective volume for different states
+      let effectiveVolume = currentVolume;
+
+      if (isSpeaking) {
+        // When agent is speaking, use actual volume + minimum breathing effect
+        effectiveVolume = Math.max(currentVolume, 0.2);
+        console.log('🗣️ Agent speaking - volume:', effectiveVolume.toFixed(3));
+      } else if (isListening) {
+        // When listening, use actual volume + smaller minimum for user feedback
+        effectiveVolume = Math.max(currentVolume, 0.1);
+        console.log('👂 User speaking - volume:', effectiveVolume.toFixed(3));
+      } else {
+        // Connected but idle - subtle breathing
+        effectiveVolume = Math.max(currentVolume, 0.05);
+        console.log('💤 Idle connected - volume:', effectiveVolume.toFixed(3));
+      }
+
       updateBallMorph(ballRef.current, effectiveVolume);
 
       // Also morph wireframe to match
@@ -61,7 +85,7 @@ const Orb: React.FC<OrbProps> = ({
       ballRef.current &&
       originalPositionsRef.current
     ) {
-      console.log('🔄 Resetting ball');
+      console.log('🔄 Resetting ball to static state');
       resetBallMorph(ballRef.current, originalPositionsRef.current);
 
       // Also reset wireframe
@@ -69,7 +93,7 @@ const Orb: React.FC<OrbProps> = ({
         resetWireframeMorph(wireframeRef.current, originalPositionsRef.current);
       }
     }
-  }, [currentVolume, isSessionActive, isSpeaking, intensity]);
+  }, [currentVolume, isSessionActive, isSpeaking, isListening, intensity]);
 
   const cleanup = () => {
     if (rendererRef.current) {
@@ -263,24 +287,35 @@ const Orb: React.FC<OrbProps> = ({
       );
 
       const offset = 10; // Base radius of the icosahedron
-      const amp = 2.5; // Amplitude for dramatic effect
+      const amp = 3.0; // Increased amplitude for more dramatic effect
       const time = window.performance.now();
       vertex.normalize();
 
-      // Noise frequency - controls the organic movement
-      const rf = 0.00001;
+      // Different noise frequencies for different states
+      let rf = 0.00001; // Base noise frequency
+      let volumeMultiplier = 4;
+
+      if (isSpeaking) {
+        // Faster, more energetic movement when agent speaks
+        rf = 0.00003;
+        volumeMultiplier = 6;
+      } else if (isListening) {
+        // Medium energy when user speaks
+        rf = 0.00002;
+        volumeMultiplier = 5;
+      }
 
       // Calculate the distance from center with noise and volume influence
       const distance =
         offset +
-        volume * 4 * intensity + // Volume effect amplified by intensity
+        volume * volumeMultiplier * intensity + // Volume effect amplified by intensity and state
         noise(
           vertex.x + time * rf * 7,
           vertex.y + time * rf * 8,
           vertex.z + time * rf * 9,
         ) *
           amp *
-          volume * intensity; // Noise effect also amplified
+          (volume + 0.1) * intensity; // Ensure some noise even at low volume
 
       vertex.multiplyScalar(distance);
 
@@ -397,6 +432,8 @@ const Orb: React.FC<OrbProps> = ({
         {/* Connection status for debugging */}
         <div className="text-xs text-black opacity-50">
           Status: {connectionStatus} | Volume: {currentVolume.toFixed(3)} | Active: {isSessionActive ? 'YES' : 'NO'}
+          <br />
+          Speaking: {isSpeaking ? 'YES' : 'NO'} | Listening: {isListening ? 'YES' : 'NO'}
         </div>
       </div>
     </div>
