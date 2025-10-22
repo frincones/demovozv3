@@ -207,8 +207,8 @@ const Index = () => {
         </AnimatePresence>
       </div>
 
-      {/* Floating chat button (when chat is closed) */}
-      {!chatOpen && !showConsent && (
+      {/* Floating chat button (when chat is closed) - TEMPORARILY HIDDEN */}
+      {false && !chatOpen && !showConsent && (
         <motion.button
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
