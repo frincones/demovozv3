@@ -29,6 +29,7 @@ const Orb: React.FC<OrbProps> = ({
   const groupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const ballRef = useRef<THREE.Mesh | null>(null);
+  const wireframeRef = useRef<THREE.LineSegments | null>(null);
   const originalPositionsRef = useRef<Float32Array | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const noise = createNoise3D();
@@ -50,6 +51,11 @@ const Orb: React.FC<OrbProps> = ({
       console.log('✅ Morphing ball');
       const effectiveVolume = isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume;
       updateBallMorph(ballRef.current, effectiveVolume);
+
+      // Also morph wireframe to match
+      if (wireframeRef.current) {
+        updateWireframeMorph(wireframeRef.current, effectiveVolume);
+      }
     } else if (
       !isSessionActive &&
       ballRef.current &&
@@ -57,6 +63,11 @@ const Orb: React.FC<OrbProps> = ({
     ) {
       console.log('🔄 Resetting ball');
       resetBallMorph(ballRef.current, originalPositionsRef.current);
+
+      // Also reset wireframe
+      if (wireframeRef.current) {
+        resetWireframeMorph(wireframeRef.current, originalPositionsRef.current);
+      }
     }
   }, [currentVolume, isSessionActive, isSpeaking, intensity]);
 
@@ -113,26 +124,69 @@ const Orb: React.FC<OrbProps> = ({
 
     rendererRef.current = renderer;
 
-    // Create the icosahedron geometry - BRIGHT MAGENTA WIREFRAME
+    // Create the icosahedron geometry with gradient wireframe
     const icosahedronGeometry = new THREE.IcosahedronGeometry(10, 8);
 
-    // SIMPLE BRIGHT MAGENTA WIREFRAME - NO COMPLEX MATERIALS
-    const lambertMaterial = new THREE.MeshLambertMaterial({
-      color: 0xFF0080, // BRIGHT MAGENTA
-      wireframe: true,
+    // Create dual-geometry system for gradient colors
+    // 1. Invisible base mesh for morphing functionality
+    const baseMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      visible: false
+    });
+    const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
+
+    // 2. Wireframe with GRADIENT COLORS
+    const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
+
+    // Create vertex colors for blue-to-magenta gradient
+    const vertexCount = edgesGeometry.attributes.position.count;
+    const colors = new Float32Array(vertexCount * 3);
+
+    for (let i = 0; i < vertexCount; i++) {
+      // Get vertex position to determine gradient
+      const x = edgesGeometry.attributes.position.getX(i);
+      const y = edgesGeometry.attributes.position.getY(i);
+      const z = edgesGeometry.attributes.position.getZ(i);
+
+      // Calculate gradient factor based on position (0 = blue, 1 = magenta)
+      const gradientFactor = (y + 10) / 20; // Normalize Y position to 0-1
+      const clampedFactor = Math.max(0, Math.min(1, gradientFactor));
+
+      // Interpolate between electric blue (0x2050F0) and neon magenta (0xFF20FF)
+      const blueR = 0x20 / 255, blueG = 0x50 / 255, blueB = 0xF0 / 255;
+      const magentaR = 0xFF / 255, magentaG = 0x20 / 255, magentaB = 0xFF / 255;
+
+      colors[i * 3] = blueR + (magentaR - blueR) * clampedFactor;     // R
+      colors[i * 3 + 1] = blueG + (magentaG - blueG) * clampedFactor; // G
+      colors[i * 3 + 2] = blueB + (magentaB - blueB) * clampedFactor; // B
+    }
+
+    edgesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const wireframeMaterial = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      linewidth: 2,
+      transparent: false,
+      opacity: 1.0
     });
 
-    const ball = new THREE.Mesh(icosahedronGeometry, lambertMaterial);
+    const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
     ball.position.set(0, 0, 0);
-    ballRef.current = ball;
+    wireframe.position.set(0, 0, 0);
 
-    console.log('⭐ Ball created:', ball);
+    ballRef.current = ball;
+    wireframeRef.current = wireframe;
+
+    console.log('⭐ Ball and wireframe created with gradients');
 
     // Store the original positions of the vertices for smooth animation
     const positionAttribute = ball.geometry.getAttribute('position');
     originalPositionsRef.current = new Float32Array(positionAttribute.array);
 
+    // Add both ball and wireframe to group
     group.add(ball);
+    group.add(wireframe);
 
     // Lighting setup for beautiful rendering - BRIGHT WHITE LIGHTS
     const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // BRIGHT
@@ -166,20 +220,19 @@ const Orb: React.FC<OrbProps> = ({
     // Continuous rotation for visual appeal
     groupRef.current.rotation.y += 0.005;
 
-    // FORCE ball to be visible and bright magenta
-    ballRef.current.visible = true;
-    if (ballRef.current.material instanceof THREE.MeshLambertMaterial) {
-      ballRef.current.material.color.setHex(0xFF0080); // FORCE BRIGHT MAGENTA
-    }
+    // Ensure wireframe is always visible with gradient colors
+    if (wireframeRef.current) {
+      wireframeRef.current.visible = true;
 
-    // Debug log every second
-    if (performance.now() % 1000 < 16) {
-      console.log('🟣 RENDER:', {
-        ballVisible: ballRef.current.visible,
-        groupVisible: groupRef.current.visible,
-        ballColor: ballRef.current.material instanceof THREE.MeshLambertMaterial ?
-          ballRef.current.material.color.getHex().toString(16) : 'unknown'
-      });
+      // Debug log every second
+      if (performance.now() % 1000 < 16) {
+        console.log('🌈 GRADIENT RENDER:', {
+          wireframeVisible: wireframeRef.current.visible,
+          hasVertexColors: !!wireframeRef.current.geometry.attributes.color,
+          ballVisible: ballRef.current.visible,
+          groupVisible: groupRef.current.visible
+        });
+      }
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -258,6 +311,44 @@ const Orb: React.FC<OrbProps> = ({
     geometry.computeVertexNormals();
   };
 
+  const updateWireframeMorph = (wireframe: THREE.LineSegments, volume: number) => {
+    // Update wireframe positions to match the morphed ball
+    if (ballRef.current) {
+      const ballGeometry = ballRef.current.geometry as THREE.BufferGeometry;
+      const ballPositions = ballGeometry.getAttribute("position");
+      const wireframeGeometry = wireframe.geometry as THREE.BufferGeometry;
+      const wireframePositions = wireframeGeometry.getAttribute("position");
+
+      // Recreate edges geometry from morphed ball
+      const tempGeometry = new THREE.IcosahedronGeometry(10, 8);
+      tempGeometry.attributes.position.copy(ballPositions);
+      const newEdgesGeometry = new THREE.EdgesGeometry(tempGeometry);
+
+      // Copy new positions to wireframe
+      wireframeGeometry.attributes.position.copy(newEdgesGeometry.attributes.position);
+      wireframeGeometry.attributes.position.needsUpdate = true;
+
+      tempGeometry.dispose();
+      newEdgesGeometry.dispose();
+    }
+  };
+
+  const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
+    // Reset wireframe to original shape with gradient colors preserved
+    const originalGeometry = new THREE.IcosahedronGeometry(10, 8);
+    const edgesGeometry = new THREE.EdgesGeometry(originalGeometry);
+
+    // Copy original positions
+    wireframe.geometry.attributes.position.copy(edgesGeometry.attributes.position);
+    wireframe.geometry.attributes.position.needsUpdate = true;
+
+    // Preserve gradient colors (don't recreate them)
+    console.log('🔄 Wireframe reset with gradient colors preserved');
+
+    originalGeometry.dispose();
+    edgesGeometry.dispose();
+  };
+
   const handleClick = () => {
     console.log('🖱️ ORB CLICKED');
     if (onClick) {
@@ -290,9 +381,6 @@ const Orb: React.FC<OrbProps> = ({
         className="hover:cursor-pointer aspect-square w-full max-w-96 transition-all duration-300 hover:scale-105"
         onClick={handleClick}
         style={{
-          border: '2px solid magenta', // DEBUGGING BORDER
-          minHeight: '200px',
-          backgroundColor: 'rgba(255, 0, 128, 0.1)', // SLIGHT MAGENTA BACKGROUND
           filter: isSessionActive
             ? 'drop-shadow(0 0 20px rgba(255, 0, 128, 0.8))'
             : 'drop-shadow(0 0 10px rgba(255, 0, 128, 0.4))',
