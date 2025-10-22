@@ -17,13 +17,13 @@ export const appConfig: AppConfig = {
     autoGainControl: import.meta.env.VITE_AUDIO_AUTO_GAIN_CONTROL !== 'false'
   },
   app: {
-    name: import.meta.env.VITE_APP_NAME || 'Lirvana',
+    name: import.meta.env.VITE_APP_NAME || 'Dani',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
     debugMode: import.meta.env.VITE_DEBUG_MODE === 'true',
     logLevel: (import.meta.env.VITE_LOG_LEVEL as any) || 'info'
   },
   business: {
-    companyName: import.meta.env.VITE_COMPANY_NAME || 'Lirvan',
+    companyName: import.meta.env.VITE_COMPANY_NAME || 'Pro Suministros',
     companyUrl: import.meta.env.VITE_COMPANY_URL || 'https://lirvan.com',
     exposolarStand: import.meta.env.VITE_EXPOSOLAR_STAND || '256'
   }
@@ -95,7 +95,7 @@ export function log(level: 'debug' | 'info' | 'warn' | 'error', message: string,
 
   if (messageLevel >= configLevel) {
     const timestamp = new Date().toISOString();
-    const prefix = `[${timestamp}] [${level.toUpperCase()}] [Lirvana]`;
+    const prefix = `[${timestamp}] [${level.toUpperCase()}] [Dani]`;
 
     switch (level) {
       case 'debug':

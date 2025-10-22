@@ -168,7 +168,7 @@ const Index = () => {
             {lirvana.isListening && "🎤 Escuchando..."}
             {lirvana.isConnecting && "🔄 Conectando..."}
             {lirvana.connectionStatus === 'requesting_mic' && "🎤 Solicitando acceso al micrófono..."}
-            {lirvana.connectionStatus === 'fetching_token' && "🔑 Obteniendo token de sesión..."}
+            {lirvana.connectionStatus === 'fetching_token' && "🔑 Conectando a Dani..."}
             {lirvana.connectionStatus === 'establishing_connection' && "🌐 Estableciendo conexión WebRTC..."}
             {lirvana.error && `❌ Error: ${lirvana.error}`}
             {lirvana.connectionStatus === 'disconnected' && !lirvana.error && "🚀 Toca el orbe para comenzar"}
