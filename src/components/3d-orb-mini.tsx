@@ -118,8 +118,8 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       switch (connectionStatus) {
         case 'connected':
           return {
-            base: 0x2050F0,    // Electric blue
-            emissive: 0xFF20FF, // Neon magenta
+            base: 0x3366FF,    // Primary blue (220 100% 60%)
+            emissive: 0x00CCFF, // Accent cyan (180 100% 60%)
             intensity: 0.3
           };
         case 'requesting_mic':
@@ -132,8 +132,8 @@ const OrbMini: React.FC<OrbMiniProps> = ({
           };
         case 'error':
           return {
-            base: 0xFF20FF,    // Neon magenta
-            emissive: 0xF040F0, // Vivid fuchsia
+            base: 0x00CCFF,    // Accent cyan
+            emissive: 0x3366FF, // Primary blue
             intensity: 0.4
           };
         default:
@@ -240,16 +240,16 @@ const OrbMini: React.FC<OrbMiniProps> = ({
     const ambientLight = new THREE.AmbientLight(0x0C0722, 0.4); // Dark purple base
     scene.add(ambientLight);
 
-    // Primary electric blue light (reduced intensity for mini)
-    const primaryLight = new THREE.SpotLight(0x2050F0, 0.8);
+    // Primary blue light (reduced intensity for mini)
+    const primaryLight = new THREE.SpotLight(0x3366FF, 0.8);
     primaryLight.position.set(-8, 15, 12);
     primaryLight.angle = Math.PI / 5;
     primaryLight.penumbra = 0.4;
     primaryLight.lookAt(ball.position);
     scene.add(primaryLight);
 
-    // Secondary magenta rim light (subtle for mini)
-    const rimLight = new THREE.SpotLight(0xFF20FF, 0.5);
+    // Secondary cyan rim light (subtle for mini)
+    const rimLight = new THREE.SpotLight(0x00CCFF, 0.5);
     rimLight.position.set(8, -10, 8);
     rimLight.angle = Math.PI / 4;
     rimLight.penumbra = 0.6;
@@ -296,8 +296,8 @@ const OrbMini: React.FC<OrbMiniProps> = ({
       switch (connectionStatus) {
         case 'connected':
           return {
-            base: 0x2050F0,    // Electric blue
-            emissive: 0xFF20FF, // Neon magenta
+            base: 0x3366FF,    // Primary blue (220 100% 60%)
+            emissive: 0x00CCFF, // Accent cyan (180 100% 60%)
             intensity: 0.3 + (currentVolume * 0.2) // Volume responsive for mini
           };
         case 'requesting_mic':
@@ -310,8 +310,8 @@ const OrbMini: React.FC<OrbMiniProps> = ({
           };
         case 'error':
           return {
-            base: 0xFF20FF,    // Neon magenta
-            emissive: 0xF040F0, // Vivid fuchsia
+            base: 0x00CCFF,    // Accent cyan
+            emissive: 0x3366FF, // Primary blue
             intensity: 0.4 + Math.sin(Date.now() * 0.006) * 0.1 // Error pulsing
           };
         default:

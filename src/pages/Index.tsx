@@ -130,7 +130,7 @@ const Index = () => {
           className="text-center mb-8 md:mb-12 px-4"
         >
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-            Lirvana
+            Dani
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground">
             Tu asistente inteligente de voz
