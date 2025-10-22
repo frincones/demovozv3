@@ -329,8 +329,8 @@ const Orb: React.FC<OrbProps> = ({
         onClick={handleClick}
         style={{
           filter: isSessionActive
-            ? 'drop-shadow(0 0 20px rgba(255, 0, 128, 0.8))'
-            : 'drop-shadow(0 0 10px rgba(255, 0, 128, 0.4))',
+            ? 'drop-shadow(0 0 20px rgba(51, 102, 255, 0.6)) drop-shadow(0 0 30px rgba(0, 204, 255, 0.4))'
+            : 'drop-shadow(0 0 10px rgba(51, 102, 255, 0.3)) drop-shadow(0 0 15px rgba(0, 204, 255, 0.2))',
           transition: 'filter 0.3s ease'
         }}
       />
