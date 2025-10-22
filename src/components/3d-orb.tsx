@@ -29,15 +29,12 @@ const Orb: React.FC<OrbProps> = ({
   const groupRef = useRef<THREE.Group | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const ballRef = useRef<THREE.Mesh | null>(null);
-  const wireframeRef = useRef<THREE.LineSegments | null>(null);
-  const glowMeshRef = useRef<THREE.Mesh | null>(null);
   const originalPositionsRef = useRef<Float32Array | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const particlesRef = useRef<THREE.Points | null>(null);
-  const particlePositionsRef = useRef<Float32Array | null>(null);
   const noise = createNoise3D();
 
   useEffect(() => {
+    console.log('🚀 INICIALIZANDO ORB');
     initViz();
     window.addEventListener("resize", onWindowResize);
     return () => {
@@ -47,58 +44,19 @@ const Orb: React.FC<OrbProps> = ({
   }, []);
 
   useEffect(() => {
-    console.log('🔥 State change detected:', {
-      isSessionActive,
-      connectionStatus,
-      isSpeaking,
-      currentVolume,
-      ballExists: !!ballRef.current,
-      wireframeExists: !!wireframeRef.current,
-      containerExists: !!containerRef.current
-    });
+    console.log('🔄 STATE CHANGE:', { isSessionActive, connectionStatus, ballExists: !!ballRef.current });
 
     if (isSessionActive && ballRef.current) {
-      console.log('✅ Session active - updating morph');
-      // Use a minimum volume for breathing effect when agent is speaking
+      console.log('✅ Morphing ball');
       const effectiveVolume = isSpeaking ? Math.max(currentVolume, 0.3) : currentVolume;
       updateBallMorph(ballRef.current, effectiveVolume);
-
-      // Also update wireframe and glow mesh morphing
-      if (wireframeRef.current) {
-        updateWireframeMorph(wireframeRef.current, effectiveVolume);
-      }
-      if (glowMeshRef.current) {
-        updateBallMorph(glowMeshRef.current, effectiveVolume);
-      }
     } else if (
       !isSessionActive &&
       ballRef.current &&
       originalPositionsRef.current
     ) {
-      console.log('🔄 Session inactive - resetting morph');
+      console.log('🔄 Resetting ball');
       resetBallMorph(ballRef.current, originalPositionsRef.current);
-
-      // Reset wireframe and glow mesh too
-      if (wireframeRef.current) {
-        resetWireframeMorph(wireframeRef.current, originalPositionsRef.current);
-      }
-      if (glowMeshRef.current) {
-        resetBallMorph(glowMeshRef.current, originalPositionsRef.current);
-      }
-    }
-
-    // FORCE visibility check after any state change
-    if (wireframeRef.current) {
-      wireframeRef.current.visible = true;
-      console.log('🔍 Wireframe forced visible:', wireframeRef.current.visible);
-    }
-    if (ballRef.current) {
-      ballRef.current.visible = true;
-      console.log('🔍 Ball forced visible:', ballRef.current.visible);
-    }
-    if (groupRef.current) {
-      groupRef.current.visible = true;
-      console.log('🔍 Group forced visible:', groupRef.current.visible);
     }
   }, [currentVolume, isSessionActive, isSpeaking, intensity]);
 
@@ -112,8 +70,12 @@ const Orb: React.FC<OrbProps> = ({
   };
 
   const initViz = () => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      console.log('❌ No container');
+      return;
+    }
 
+    console.log('🏗️ Creating scene');
     const scene = new THREE.Scene();
     const group = new THREE.Group();
     const camera = new THREE.PerspectiveCamera(
@@ -151,160 +113,41 @@ const Orb: React.FC<OrbProps> = ({
 
     rendererRef.current = renderer;
 
-    // Create the icosahedron geometry - this creates the beautiful faceted sphere
+    // Create the icosahedron geometry - BRIGHT MAGENTA WIREFRAME
     const icosahedronGeometry = new THREE.IcosahedronGeometry(10, 8);
 
-    // Futuristic color system based on connection status
-    const getFuturisticColors = () => {
-      switch (connectionStatus) {
-        case 'connected':
-          return {
-            base: 0x2050F0,    // Electric blue
-            emissive: 0xFF20FF, // Neon magenta
-            intensity: 0.4
-          };
-        case 'requesting_mic':
-        case 'fetching_token':
-        case 'establishing_connection':
-          return {
-            base: 0x801090,    // Neon violet
-            emissive: 0x6A00FF, // Purple blend
-            intensity: 0.3
-          };
-        case 'error':
-          return {
-            base: 0xFF20FF,    // Neon magenta
-            emissive: 0xF040F0, // Vivid fuchsia
-            intensity: 0.5
-          };
-        default:
-          return {
-            base: 0x0C0722,    // Base dark
-            emissive: 0x2020A0, // Deep blue
-            intensity: 0.1
-          };
-      }
-    };
-
-    const colors = getFuturisticColors();
-
-    // Create both solid mesh and wireframe edges for complete color control
-    // 1. Invisible base mesh for morphing functionality
-    const baseMaterial = new THREE.MeshBasicMaterial({
-      transparent: true,
-      opacity: 0,
-      visible: false
+    // SIMPLE BRIGHT MAGENTA WIREFRAME - NO COMPLEX MATERIALS
+    const lambertMaterial = new THREE.MeshLambertMaterial({
+      color: 0xFF0080, // BRIGHT MAGENTA
+      wireframe: true,
     });
-    const ball = new THREE.Mesh(icosahedronGeometry, baseMaterial);
 
-    // 2. Wireframe with SOLID BRIGHT COLOR - forget gradients for now
-    const edgesGeometry = new THREE.EdgesGeometry(icosahedronGeometry);
-
-    const wireframeMaterial = new THREE.LineBasicMaterial({
-      color: 0xFF0080, // Bright magenta - should ALWAYS be visible
-      linewidth: 10, // EXTRA THICK for maximum visibility
-      transparent: false,
-      opacity: 1.0
-    });
-    const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial);
-
-    // 3. Inner glow mesh DISABLED temporarily to test wireframe visibility
-    const glowMaterial = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(colors.emissive),
-      transparent: true,
-      opacity: 0, // DISABLED - might be interfering with wireframe
-      visible: false,
-      blending: THREE.AdditiveBlending
-    });
-    const glowMesh = new THREE.Mesh(icosahedronGeometry.clone(), glowMaterial);
-    glowMesh.scale.setScalar(0.98); // Slightly smaller for inner glow effect
-    glowMesh.visible = false; // FORCE INVISIBLE
-
+    const ball = new THREE.Mesh(icosahedronGeometry, lambertMaterial);
     ball.position.set(0, 0, 0);
-    wireframe.position.set(0, 0, 0);
-    glowMesh.position.set(0, 0, 0);
-
     ballRef.current = ball;
-    wireframeRef.current = wireframe;
-    glowMeshRef.current = glowMesh;
+
+    console.log('⭐ Ball created:', ball);
 
     // Store the original positions of the vertices for smooth animation
     const positionAttribute = ball.geometry.getAttribute('position');
     originalPositionsRef.current = new Float32Array(positionAttribute.array);
 
-    // Add all elements to the group
     group.add(ball);
-    group.add(wireframe);
-    group.add(glowMesh);
 
-    // Create particle halo system
-    const particleCount = 120;
-    const particleGeometry = new THREE.BufferGeometry();
-    const particlePositions = new Float32Array(particleCount * 3);
-    const particleColors = new Float32Array(particleCount * 3);
-
-    // Initialize particles in a spherical distribution
-    for (let i = 0; i < particleCount; i++) {
-      const radius = 15 + Math.random() * 8;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI;
-
-      particlePositions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
-      particlePositions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-      particlePositions[i * 3 + 2] = radius * Math.cos(phi);
-
-      // Color gradient from electric blue to magenta
-      const colorBlend = Math.random();
-      particleColors[i * 3] = 0.125 + colorBlend * 0.875;     // R: 0.125 to 1.0
-      particleColors[i * 3 + 1] = 0.31 * (1 - colorBlend) + colorBlend * 0.13; // G: 0.31 to 0.13
-      particleColors[i * 3 + 2] = 1.0;                        // B: constant 1.0
-    }
-
-    particleGeometry.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
-    particleGeometry.setAttribute('color', new THREE.BufferAttribute(particleColors, 3));
-
-    const particleMaterial = new THREE.PointsMaterial({
-      size: 0.8,
-      transparent: true,
-      opacity: 0.6,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-      alphaTest: 0.1
-    });
-
-    const particles = new THREE.Points(particleGeometry, particleMaterial);
-    particlesRef.current = particles;
-    particlePositionsRef.current = particlePositions;
-    group.add(particles);
-
-    // Enhanced lighting setup for futuristic rendering
-    // Subtle ambient base light
-    const ambientLight = new THREE.AmbientLight(0x0C0722, 0.3); // Dark purple base
+    // Lighting setup for beautiful rendering - BRIGHT WHITE LIGHTS
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // BRIGHT
     scene.add(ambientLight);
 
-    // Primary electric blue light
-    const primaryLight = new THREE.SpotLight(0x2050F0, 1.2);
-    primaryLight.position.set(-15, 30, 25);
-    primaryLight.angle = Math.PI / 6;
-    primaryLight.penumbra = 0.3;
-    primaryLight.lookAt(ball.position);
-    scene.add(primaryLight);
-
-    // Secondary magenta rim light
-    const rimLight = new THREE.SpotLight(0xFF20FF, 0.8);
-    rimLight.position.set(15, -20, 15);
-    rimLight.angle = Math.PI / 5;
-    rimLight.penumbra = 0.5;
-    rimLight.lookAt(ball.position);
-    scene.add(rimLight);
-
-    // Accent violet fill light
-    const fillLight = new THREE.DirectionalLight(0x801090, 0.4);
-    fillLight.position.set(0, 0, 30);
-    scene.add(fillLight);
+    const spotLight = new THREE.SpotLight(0xffffff);
+    spotLight.intensity = 2.0; // EXTRA BRIGHT
+    spotLight.position.set(-10, 40, 20);
+    spotLight.lookAt(ball.position);
+    spotLight.castShadow = true;
+    scene.add(spotLight);
 
     scene.add(group);
 
+    console.log('🎬 Starting render');
     render();
   };
 
@@ -316,100 +159,27 @@ const Orb: React.FC<OrbProps> = ({
       !rendererRef.current ||
       !sceneRef.current
     ) {
+      console.log('❌ Missing refs for render');
       return;
     }
 
     // Continuous rotation for visual appeal
     groupRef.current.rotation.y += 0.005;
 
-    // Animate particles
-    if (particlesRef.current && particlePositionsRef.current) {
-      const time = performance.now() * 0.001;
-      const positions = particlesRef.current.geometry.getAttribute('position');
-      const originalPositions = particlePositionsRef.current;
-
-      for (let i = 0; i < positions.count; i++) {
-        const i3 = i * 3;
-        const x = originalPositions[i3];
-        const y = originalPositions[i3 + 1];
-        const z = originalPositions[i3 + 2];
-
-        // Slow orbital motion + audio responsive movement
-        const angle = time * 0.2 + i * 0.1;
-        const audioInfluence = isSessionActive ? currentVolume * 3 : 0;
-
-        positions.setX(i, x + Math.sin(angle) * (1 + audioInfluence));
-        positions.setY(i, y + Math.cos(angle * 0.7) * (1 + audioInfluence));
-        positions.setZ(i, z + Math.sin(angle * 0.5) * (1 + audioInfluence));
-      }
-
-      positions.needsUpdate = true;
-
-      // Update particle opacity based on session state
-      if (particlesRef.current.material instanceof THREE.PointsMaterial) {
-        const targetOpacity = isSessionActive ? 0.8 : 0.4;
-        particlesRef.current.material.opacity += (targetOpacity - particlesRef.current.material.opacity) * 0.05;
-      }
+    // FORCE ball to be visible and bright magenta
+    ballRef.current.visible = true;
+    if (ballRef.current.material instanceof THREE.MeshLambertMaterial) {
+      ballRef.current.material.color.setHex(0xFF0080); // FORCE BRIGHT MAGENTA
     }
 
-    // Update wireframe and glow colors based on connection status (futuristic theme)
-    const colors = (() => {
-      switch (connectionStatus) {
-        case 'connected':
-          return {
-            base: 0x2050F0,    // Electric blue
-            emissive: 0xFF20FF, // Neon magenta
-            intensity: 0.4 + (currentVolume * 0.3) // Volume responsive intensity
-          };
-        case 'requesting_mic':
-        case 'fetching_token':
-        case 'establishing_connection':
-          return {
-            base: 0x801090,    // Neon violet
-            emissive: 0x6A00FF, // Purple blend
-            intensity: 0.3 + Math.sin(Date.now() * 0.003) * 0.1 // Pulsing effect
-          };
-        case 'error':
-          return {
-            base: 0xFF20FF,    // Neon magenta
-            emissive: 0xF040F0, // Vivid fuchsia
-            intensity: 0.5 + Math.sin(Date.now() * 0.005) * 0.2 // Error pulsing
-          };
-        default:
-          return {
-            base: 0x0C0722,    // Base dark
-            emissive: 0x2020A0, // Deep blue
-            intensity: 0.1
-          };
-      }
-    })();
-
-    // FORCE wireframe to be bright magenta always - no gradients, just visible
-    if (wireframeRef.current && wireframeRef.current.material instanceof THREE.LineBasicMaterial) {
-      wireframeRef.current.visible = true;
-      wireframeRef.current.material.color.setHex(0xFF0080); // Bright magenta
-      wireframeRef.current.material.transparent = false;
-      wireframeRef.current.material.opacity = 1.0;
-
-      // Extra debugging every 60 frames (1 second at 60fps)
-      if (performance.now() % 1000 < 16) {
-        console.log('🟦 RENDER STATUS:', {
-          wireframeVisible: wireframeRef.current.visible,
-          ballVisible: ballRef.current?.visible,
-          groupVisible: groupRef.current?.visible,
-          containerExists: !!containerRef.current,
-          rendererExists: !!rendererRef.current,
-          connectionStatus,
-          isSessionActive
-        });
-      }
-    }
-
-    // Glow mesh DISABLED for debugging - might be interfering with wireframe visibility
-    if (glowMeshRef.current && glowMeshRef.current.material instanceof THREE.MeshBasicMaterial) {
-      glowMeshRef.current.visible = false; // FORCE DISABLED
-      glowMeshRef.current.material.opacity = 0;
-      console.log('Glow mesh disabled for wireframe debugging');
+    // Debug log every second
+    if (performance.now() % 1000 < 16) {
+      console.log('🟣 RENDER:', {
+        ballVisible: ballRef.current.visible,
+        groupVisible: groupRef.current.visible,
+        ballColor: ballRef.current.material instanceof THREE.MeshLambertMaterial ?
+          ballRef.current.material.color.getHex().toString(16) : 'unknown'
+      });
     }
 
     rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -488,83 +258,8 @@ const Orb: React.FC<OrbProps> = ({
     geometry.computeVertexNormals();
   };
 
-  const updateWireframeMorph = (wireframe: THREE.LineSegments, volume: number) => {
-    const geometry = wireframe.geometry as THREE.BufferGeometry;
-    const positionAttribute = geometry.getAttribute("position");
-
-    // Get the morphed positions from the main ball
-    if (ballRef.current) {
-      const ballGeometry = ballRef.current.geometry as THREE.BufferGeometry;
-      const ballPositions = ballGeometry.getAttribute("position");
-
-      // Update wireframe positions to match ball morphing
-      for (let i = 0; i < positionAttribute.count; i++) {
-        const ballIndex = Math.floor(i / 2); // Each edge connects 2 vertices
-        if (ballIndex < ballPositions.count) {
-          positionAttribute.setXYZ(
-            i,
-            ballPositions.getX(ballIndex),
-            ballPositions.getY(ballIndex),
-            ballPositions.getZ(ballIndex)
-          );
-        }
-      }
-
-      // Do NOT update colors during morphing to preserve gradient
-      // Colors are set once at initialization and should never change
-
-      positionAttribute.needsUpdate = true;
-    }
-  };
-
-  const resetWireframeMorph = (wireframe: THREE.LineSegments, originalPositions: Float32Array) => {
-    console.log('🔄 RESET WIREFRAME MORPH - ANTES', {
-      visible: wireframe.visible,
-      material: wireframe.material,
-      geometry: wireframe.geometry
-    });
-
-    // DON'T recreate geometry - just reset positions to match ball
-    if (ballRef.current && originalPositionsRef.current) {
-      const geometry = wireframe.geometry as THREE.BufferGeometry;
-      const positionAttribute = geometry.getAttribute("position");
-
-      // Reset wireframe to follow the reset ball positions
-      const ballGeometry = ballRef.current.geometry as THREE.BufferGeometry;
-      const ballPositions = ballGeometry.getAttribute("position");
-
-      for (let i = 0; i < positionAttribute.count; i++) {
-        const ballIndex = Math.floor(i / 2);
-        if (ballIndex < ballPositions.count) {
-          positionAttribute.setXYZ(
-            i,
-            ballPositions.getX(ballIndex),
-            ballPositions.getY(ballIndex),
-            ballPositions.getZ(ballIndex)
-          );
-        }
-      }
-
-      positionAttribute.needsUpdate = true;
-
-      // FORCE wireframe to be visible and bright magenta
-      wireframe.visible = true;
-      if (wireframe.material instanceof THREE.LineBasicMaterial) {
-        wireframe.material.color.setHex(0xFF0080);
-        wireframe.material.visible = true;
-        wireframe.material.transparent = false;
-        wireframe.material.opacity = 1.0;
-      }
-    }
-
-    console.log('🔄 RESET WIREFRAME MORPH - DESPUÉS', {
-      visible: wireframe.visible,
-      material: wireframe.material,
-      geometry: wireframe.geometry
-    });
-  };
-
   const handleClick = () => {
+    console.log('🖱️ ORB CLICKED');
     if (onClick) {
       onClick();
     }
@@ -595,39 +290,26 @@ const Orb: React.FC<OrbProps> = ({
         className="hover:cursor-pointer aspect-square w-full max-w-96 transition-all duration-300 hover:scale-105"
         onClick={handleClick}
         style={{
-          filter: (() => {
-            switch (connectionStatus) {
-              case 'connected':
-                return isSessionActive
-                  ? 'drop-shadow(0 0 40px rgba(32, 80, 240, 0.8)) drop-shadow(0 0 80px rgba(255, 32, 255, 0.6))'
-                  : 'drop-shadow(0 0 30px rgba(32, 80, 240, 0.6))';
-              case 'requesting_mic':
-              case 'fetching_token':
-              case 'establishing_connection':
-                return 'drop-shadow(0 0 35px rgba(128, 16, 144, 0.7)) drop-shadow(0 0 70px rgba(106, 0, 255, 0.5))';
-              case 'error':
-                return 'drop-shadow(0 0 45px rgba(255, 32, 255, 0.9)) drop-shadow(0 0 90px rgba(240, 64, 240, 0.6))';
-              default:
-                return 'drop-shadow(0 0 25px rgba(12, 7, 34, 0.5))';
-            }
-          })(),
+          border: '2px solid magenta', // DEBUGGING BORDER
+          minHeight: '200px',
+          backgroundColor: 'rgba(255, 0, 128, 0.1)', // SLIGHT MAGENTA BACKGROUND
+          filter: isSessionActive
+            ? 'drop-shadow(0 0 20px rgba(255, 0, 128, 0.8))'
+            : 'drop-shadow(0 0 10px rgba(255, 0, 128, 0.4))',
           transition: 'filter 0.3s ease'
         }}
       />
 
       {/* Status indicator */}
       <div className="text-center space-y-2">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-white">
           {getStatusText()}
         </p>
 
-
         {/* Connection status for debugging */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-muted-foreground opacity-50">
-            Status: {connectionStatus} | Volume: {currentVolume.toFixed(3)}
-          </div>
-        )}
+        <div className="text-xs text-white opacity-50">
+          Status: {connectionStatus} | Volume: {currentVolume.toFixed(3)} | Active: {isSessionActive ? 'YES' : 'NO'}
+        </div>
       </div>
     </div>
   );
