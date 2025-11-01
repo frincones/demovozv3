@@ -1,202 +1,244 @@
-# Lirvana Voice UI - OpenAI Realtime API Integration
+# Lirvana Voice UI v3 - Sistema de Verificación de Identidad con Deepfake Detection
+
+Sistema avanzado de interfaz de voz con verificación de identidad mediante análisis de sincronización audio-visual (SyncNet) para detección de deepfakes.
 
 **Live Demo**: https://lirvana-voice-ui.vercel.app/
 
-## 🎯 Descripción
+## 📋 Descripción
 
-Asistente virtual de voz inteligente para Lirvan.com que utiliza OpenAI Realtime API para proporcionar conversaciones naturales en tiempo real. Lirvana es capaz de identificar la ubicación del usuario, proporcionar información sobre productos solares, y conectar automáticamente con el ejecutivo comercial apropiado según la zona geográfica.
+Lirvana Voice UI v3 integra:
+- 🎙️ **Interfaz de voz en tiempo real** con OpenAI Realtime API
+- 🔒 **Verificación de identidad biométrica** con detección de deepfakes (SyncNet)
+- 🌍 **Enrutamiento geográfico** inteligente de ejecutivos comerciales
+- 🤖 **Sistema de agentes** para gestión de tareas
+- 🎨 **Visualización 3D** con Three.js
 
-## ✨ Características Principales
+## 🏗️ Arquitectura - 3 Servicios
 
-- **🎙️ Conversación de Voz en Tiempo Real**: Integración completa con OpenAI Realtime API
-- **🌍 Enrutamiento Geográfico Inteligente**: Asignación automática de ejecutivos por zona
-- **🔧 Herramientas Especializadas**: 7 herramientas específicas para el negocio solar
-- **💬 Fallback a Chat**: Sistema robusto de respaldo cuando el audio no está disponible
-- **📱 Responsive Design**: Optimizado para desktop, tablet y móvil
-- **🌐 Multiidioma**: Soporte para Español e Inglés
-
-## 🏗️ Arquitectura Técnica
-
-### Stack Principal
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: Shadcn/ui + Tailwind CSS
-- **Animaciones**: Framer Motion
-- **Audio**: Web Audio API + MediaRecorder
-- **AI**: OpenAI Realtime API + Web Speech API (fallback)
-
-### Estructura del Proyecto
 ```
-src/
-├── types/                    # Tipos TypeScript
-│   ├── realtime.ts          # OpenAI Realtime API
-│   ├── business.ts          # Lógica de negocio Lirvan
-│   └── audio.ts             # Procesamiento de audio
-├── services/                # Servicios core
-│   ├── realtimeService.ts   # Cliente OpenAI Realtime
-│   ├── audioService.ts      # Manejo de audio del navegador
-│   ├── speechService.ts     # Web Speech API fallback
-│   ├── geolocationService.ts # Mapeo de zonas geográficas
-│   ├── routingService.ts    # Lógica de enrutamiento
-│   └── lirvanaTools.ts      # Herramientas para OpenAI
-├── hooks/                   # Hooks React personalizados
-│   ├── useLirvana.ts        # Hook principal (integra todo)
-│   ├── useRealtime.ts       # Conexión OpenAI Realtime
-│   ├── useAudio.ts          # Manejo de audio
-│   └── useSpeechRecognition.ts # Reconocimiento de voz
-├── components/              # Componentes React actualizados
-│   ├── VoiceOrb.tsx         # Orbe con audio levels reales
-│   ├── ChatBox.tsx          # Chat con mensajes reales
-│   └── ConsentBanner.tsx    # Banner de permisos
-└── config/
-    └── appConfig.ts         # Configuración centralizada
+📦 demovozv3
+├── 📱 Frontend (React + Vite)        → Puerto 5173
+├── 🔧 Backend API (Node.js)          → Puerto 3001
+└── 🤖 SyncNet Service (Python/Flask) → Puerto 5000
 ```
 
-## 🤖 Personalidad de Lirvana
+### Frontend
+- React 18 + TypeScript + Vite
+- Shadcn/ui + TailwindCSS
+- OpenAI Realtime API
+- Three.js para visualizaciones
 
-### Características
-- **Tono**: Profesional pero cercano y amable
-- **Enfoque**: Primera persona, parte del equipo Lirvan
-- **Especialización**: Energía solar, productos Polux40/Pro, consultoría
+### Backend API
+- Node.js + Express
+- Gestión de sesiones
+- Proxy para SyncNet
+- Orquestación de servicios
 
-### Comportamiento
-- Saludo **obligatorio** preguntando ubicación (país, ciudad, departamento)
-- Uso de lenguaje inclusivo: "puedo mostrarte", "quiero que tu experiencia sea la mejor"
-- Nunca inventa respuestas, reconoce límites con amabilidad
-- Mantiene conversación activa con preguntas útiles
+### SyncNet Service
+- Python 3.11 + Flask
+- PyTorch + OpenCV
+- Análisis de sincronización audio-visual
+- Detección de deepfakes científicamente validada
 
-## 🌍 Sistema de Enrutamiento Geográfico
+## 🚀 Instalación Rápida
 
-### Colombia
-- **Zona Andina Sur** (Bogotá, Boyacá, Cundinamarca, Meta) → **Mary Luz**
-- **Zona Andina Norte** (Antioquia, Eje Cafetero, Valle, Cauca) → **Jhon Alex**
-- **Zona Córdoba/Santander** → **Eduardo** (general) / **Marlon** (industrial)
-
-### Internacional
-- **México** → **Kelly, Ana, Michael**
-
-### Soporte Técnico
-- **Víctor** (NO comercial, solo soporte técnico)
-
-## 🛠️ Herramientas del Asistente
-
-1. **`get_location_info`**: Procesa ubicación del usuario para asignación
-2. **`redirect_to_sales`**: Redirige al ejecutivo según zona geográfica
-3. **`product_comparison`**: Compara Polux40 vs Polux40 Pro
-4. **`schedule_consultation`**: Facilita agendamiento de consultoría
-5. **`exposolar_info`**: Información sobre Exposolar 2025 (Stand 256)
-6. **`company_info`**: Información general de Lirvan
-7. **`redirect_to_support`**: Redirección a soporte técnico
-
-## 🚀 Deployment y Configuración
-
-### Variables de Entorno Requeridas
-```env
-VITE_OPENAI_API_KEY=sk-your-openai-api-key-here
-VITE_REALTIME_MODEL=gpt-4o-realtime-preview
-VITE_REALTIME_VOICE=nova
-VITE_REALTIME_TEMPERATURE=0.7
-VITE_REALTIME_MAX_TOKENS=150
-VITE_AUDIO_SAMPLE_RATE=24000
-VITE_AUDIO_CHANNELS=1
-VITE_COMPANY_NAME=Lirvan
-VITE_COMPANY_URL=https://lirvan.com
-VITE_EXPOSOLAR_STAND=256
-```
-
-### Pasos para Deploy en Vercel
-1. **Push del código** al repositorio
-2. **Configurar variables** de entorno en Vercel dashboard
-3. **Obtener OpenAI API Key** con acceso a Realtime API
-4. **Deploy automático** - Vercel instalará dependencias
-
-### Testing Local (Opcional)
+### 1. Clonar repositorio
 ```bash
-# Instalar dependencias
+git clone https://github.com/frincones/demovozv3.git
+cd demovozv3
+```
+
+### 2. Instalar dependencias
+
+```bash
+# Frontend
 npm install
 
-# Configurar .env.local con las variables necesarias
-# Ejecutar en desarrollo
+# Backend
+cd server && npm install && cd ..
+
+# SyncNet Service
+cd syncnet-service
+pip3 install -r requirements.txt
+git clone https://github.com/joonson/syncnet_python.git
+./setup.sh  # Descarga modelos (104MB)
+cd ..
+```
+
+### 3. Configurar variables de entorno
+
+Crear `.env` en cada servicio (ver `DEPLOYMENT_RENDER.md` para detalles completos):
+
+**Frontend (`.env`):**
+```env
+VITE_API_BASE_URL=http://localhost:3001
+VITE_OPENAI_API_KEY=sk-...
+```
+
+**Backend (`server/.env`):**
+```env
+PORT=3001
+OPENAI_API_KEY=sk-...
+PYTHON_SERVICE_URL=http://localhost:5000
+```
+
+**SyncNet (`syncnet-service/.env`):**
+```env
+PORT=5000
+MODEL_PATH=./models/syncnet_v2.model
+DETECTOR_PATH=./models/sfd_face.pth
+```
+
+### 4. Ejecutar servicios
+
+```bash
+# Terminal 1: Frontend + Backend
+npm run dev:full
+
+# Terminal 2: SyncNet
+cd syncnet-service && python3 app.py
+```
+
+**Acceso:**
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3001
+- SyncNet: http://localhost:5000
+
+## 🔒 Sistema de Verificación de Identidad (SyncNet)
+
+### Cómo funciona
+
+1. Usuario graba video de 4 segundos leyendo una frase
+2. SyncNet analiza sincronización entre audio y movimiento labial
+3. Sistema calcula 3 métricas científicamente validadas:
+   - **Confidence**: Correlación audio-visual (threshold: >2.0)
+   - **Min Distance**: Distancia euclidiana en espacio de embeddings (5-15 normal)
+   - **Offset**: Desfase temporal en frames (0 = perfecto)
+4. Score normalizado de 0-1 basado en paper científico
+
+### Clasificación
+
+| Score | Interpretación | Acción |
+|-------|----------------|--------|
+| ≥ 80% | 🟢 Alta confianza - Muy probablemente humano | ALLOW |
+| 60-79% | 🔵 Confianza media - Probablemente humano | NEXT |
+| 40-59% | 🟡 Sospechoso - Requiere verificación | NEXT |
+| < 40% | 🔴 Alto riesgo - Posible deepfake | BLOCK |
+
+### Calibración Científica
+
+Basado en el paper "Out of time: automated lip sync in the wild" (Chung & Zisserman, ACCV 2016).
+
+Ver documentación completa en:
+- [`syncnet-service/CALIBRACION_SYNCNET.md`](syncnet-service/CALIBRACION_SYNCNET.md)
+- [`syncnet-service/RESUMEN_TECNICO.md`](syncnet-service/RESUMEN_TECNICO.md)
+
+## 📦 Deployment en Render
+
+El proyecto requiere **3 servicios separados** en Render. Ver guía completa: [`DEPLOYMENT_RENDER.md`](DEPLOYMENT_RENDER.md)
+
+### Resumen rápido
+
+1. **Frontend (Static Site)**
+   - Build: `npm install && npm run build`
+   - Publish: `dist/`
+
+2. **Backend (Web Service - Node.js)**
+   - Build: `cd server && npm install`
+   - Start: `cd server && npm start`
+
+3. **SyncNet (Web Service - Python)**
+   - Build: `cd syncnet-service && pip install -r requirements.txt && ./setup.sh`
+   - Start: `cd syncnet-service && gunicorn app:app`
+
+### Consideraciones importantes para Render
+
+⚠️ **Modelos SyncNet** (104 MB):
+- Incluir en build o usar storage externo (S3/GCS)
+- Free tier tiene 512 MB de disco
+
+⚠️ **Tiempo de procesamiento**:
+- SyncNet tarda 30-45 segundos por video
+- Aumentar timeout a 120 segundos en Render
+
+⚠️ **Memoria**:
+- SyncNet requiere ~512 MB RAM mínimo
+- Recomendado: 2+ GB (paid tier)
+
+## 🛠️ Herramientas de Lirvana
+
+1. **`get_location_info`** - Procesa ubicación para enrutamiento
+2. **`redirect_to_sales`** - Asigna ejecutivo por zona
+3. **`product_comparison`** - Compara productos solares
+4. **`schedule_consultation`** - Agenda consultoría
+5. **`exposolar_info`** - Info de Exposolar 2025
+6. **`company_info`** - Info general de Lirvan
+7. **`redirect_to_support`** - Soporte técnico
+
+## 🌍 Enrutamiento Geográfico
+
+### Colombia
+- **Zona Andina Sur** → Mary Luz
+- **Zona Andina Norte** → Jhon Alex
+- **Córdoba/Santander** → Eduardo/Marlon
+
+### Internacional
+- **México** → Kelly, Ana, Michael
+
+## 🐛 Troubleshooting
+
+### "SyncNet not available - returning demo data"
+```bash
+cd syncnet-service
+./setup.sh  # Descarga modelos
+```
+
+### "No face tracks generated"
+- Video debe ser al menos 4 segundos
+- Buena iluminación
+- Rostro centrado en cámara
+
+### Frontend no conecta con Backend
+```bash
+# Verificar health checks
+curl http://localhost:3001/api/avsync/health
+curl http://localhost:5000/health
+```
+
+## 📚 Documentación
+
+- [`DEPLOYMENT_RENDER.md`](DEPLOYMENT_RENDER.md) - Guía completa de deployment
+- [`syncnet-service/README.md`](syncnet-service/README.md) - Documentación de SyncNet
+- [`syncnet-service/CALIBRACION_SYNCNET.md`](syncnet-service/CALIBRACION_SYNCNET.md) - Calibración científica
+
+## 🔧 Scripts Útiles
+
+```bash
+# Desarrollo completo
+npm run dev:full
+
+# Solo frontend
 npm run dev
+
+# Solo backend
+npm run server:start
 
 # Build para producción
 npm run build
+
+# Instalar todo (desde raíz)
+npm install && npm run server:install && cd syncnet-service && pip3 install -r requirements.txt
 ```
 
-## 📋 Estado de Implementación
+## 📄 Licencia
 
-### ✅ Completado (100% funcional)
-- [x] **Integración OpenAI Realtime API** completa
-- [x] **Sistema de geolocalización** y enrutamiento automático
-- [x] **7 herramientas especializadas** para el asistente
-- [x] **Componentes React actualizados** con funcionalidad real
-- [x] **Audio processing** en tiempo real
-- [x] **Fallbacks robustos** para compatibilidad
-- [x] **Personalidad Lirvana** según especificaciones exactas
-- [x] **Sistema de WhatsApp** con links contextualizados
+Proyecto privado - Uso interno
 
-### ⚠️ Pendiente (para activación)
-- [ ] **Resolver problema Node.js local** (opcional)
-- [ ] **Obtener OpenAI API Key** con acceso a Realtime API
-- [ ] **Configurar variables de entorno** en Vercel
-- [ ] **Testing en producción** y ajustes finales
+## 👥 Autores
 
-## 🎨 Funcionalidades de UI
-
-### VoiceOrb (Orbe de Voz)
-- **Estados visuales**: Inactivo, Conectando, Escuchando, Procesando, Hablando, Error
-- **Audio levels**: Visualización en tiempo real del nivel de audio
-- **Indicadores de conexión**: Colores según estado (verde=conectado, amarillo=conectando, gris=desconectado)
-
-### ChatBox (Interfaz de Chat)
-- **Mensajes reales** de OpenAI con timestamps
-- **Banner de ejecutivo asignado** con botón directo a WhatsApp
-- **Transcripción en vivo** opcional
-- **Indicadores de estado** de conexión
-- **Soporte multiidioma** (ES/EN)
-
-### ConsentBanner (Banner de Consentimiento)
-- **Solicitud real** de permisos de micrófono
-- **Opciones**: Activar voz completa o solo chat
-- **Información de privacidad** actualizada
-
-## 🔧 Troubleshooting
-
-### "OpenAI API Key not found"
-- Verificar variables de entorno en Vercel
-- Asegurar que la key tenga acceso a Realtime API
-
-### "Audio permission denied"
-- Normal en HTTP, Vercel provee HTTPS automáticamente
-- Usuario debe aceptar permisos en el navegador
-
-### "Connection failed"
-- Verificar HTTPS (requerido para WebRTC)
-- Comprobar que OpenAI Realtime API esté disponible
-
-## 📄 Documentación Adicional
-
-- [`DEPLOYMENT.md`](./DEPLOYMENT.md) - Guía detallada de deployment
-- [`Context/workplan.md`](./Context/workplan.md) - Plan de trabajo completo
-- [`Context/prd.md`](./Context/prd.md) - Especificaciones del producto
-
-## 🎯 Próximos Pasos
-
-1. **Configurar OpenAI API Key** y desplegar
-2. **Testing de flujos completos** en producción
-3. **Optimización de prompts** según interacciones reales
-4. **Analytics y métricas** de uso
-5. **Integración con CRM** Lirvan
-
-## 💻 Tecnologías y Dependencias
-
-- React 18 + TypeScript + Vite
-- OpenAI JavaScript SDK
-- Shadcn/ui + Tailwind CSS
-- Framer Motion
-- Web Audio API / MediaRecorder
-- Web Speech API (fallback)
-- Vercel (deployment)
+- **Freddy Rincones** - [frincones](https://github.com/frincones)
+- **Claude (Anthropic)** - Asistencia en desarrollo
 
 ---
 
-**Desarrollado para Lirvan.com** - Revolucionando la experiencia de atención al cliente con IA conversacional de vanguardia.
+**Desarrollado para Lirvan.com** - Revolucionando la atención al cliente con IA conversacional y verificación biométrica de vanguardia.

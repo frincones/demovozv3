@@ -1,0 +1,74 @@
+# Render Blueprint para Lirvana Voice UI v3
+# 3 servicios: Frontend (Static), Backend (Node.js), SyncNet (Python)
+
+services:
+  # Servicio 1: SyncNet Python Service
+  - type: web
+    name: lirvana-syncnet
+    env: python
+    region: oregon
+    plan: starter
+    buildCommand: |
+      pip install -r requirements.txt &&
+      git clone https://github.com/joonson/syncnet_python.git &&
+      mkdir -p models &&
+      wget -q http://www.robots.ox.ac.uk/~vgg/software/lipsync/data/syncnet_v2.model -O models/syncnet_v2.model &&
+      wget -q https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth -O models/sfd_face.pth
+    startCommand: gunicorn --config gunicorn_config.py app:app
+    rootDir: syncnet-service
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: MODEL_PATH
+        value: ./models/syncnet_v2.model
+      - key: DETECTOR_PATH
+        value: ./models/sfd_face.pth
+      - key: TMP_DIR
+        value: ./tmp
+      - key: MAX_VIDEO_SIZE_MB
+        value: 10
+      - key: PROCESSING_TIMEOUT_SECONDS
+        value: 120
+      - key: LOG_LEVEL
+        value: INFO
+      - key: FLASK_DEBUG
+        value: False
+
+  # Servicio 2: Backend API Node.js
+  - type: web
+    name: lirvana-backend
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    rootDir: server
+    healthCheckPath: /api/avsync/health
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false  # Configurar manualmente en Render Dashboard
+      - key: PYTHON_SERVICE_URL
+        value: https://lirvana-syncnet.onrender.com  # Actualizar con tu URL real
+      - key: CLEANUP_UPLOADS
+        value: true
+
+  # Servicio 3: Frontend Static Site
+  - type: web
+    name: lirvana-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://lirvana-backend.onrender.com  # Actualizar con tu URL real
+      - key: VITE_OPENAI_API_KEY
+        sync: false  # Configurar manualmente en Render Dashboard
+      - key: VITE_REALTIME_MODEL
+        value: gpt-4o-realtime-preview
+      - key: VITE_REALTIME_VOICE
+        value: nova
