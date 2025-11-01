@@ -259,10 +259,14 @@ export default function useWebRTC(
          * AI calls a function (tool)
          */
         case "response.function_call_arguments.done": {
+          console.log('🔧 Function call received:', msg.name, msg);
           const fn = functionRegistry.current[msg.name];
           if (fn) {
+            console.log('✅ Function found in registry:', msg.name);
             const args = JSON.parse(msg.arguments);
+            console.log('📝 Function arguments:', args);
             const result = await fn(args);
+            console.log('✅ Function executed, result:', result);
 
             // Respond with function output
             const response = {
@@ -274,6 +278,10 @@ export default function useWebRTC(
               },
             };
             dataChannelRef.current?.send(JSON.stringify(response));
+            console.log('📤 Function result sent back to OpenAI');
+          } else {
+            console.error('❌ Function NOT found in registry:', msg.name);
+            console.error('📋 Available functions:', Object.keys(functionRegistry.current));
           }
           break;
         }

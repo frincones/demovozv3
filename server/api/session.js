@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import avSyncRouter from './avsync.js';
 
 dotenv.config();
 
@@ -10,10 +11,19 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://lirvana-voice-ui.vercel.app'],
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:8080',
+    'http://127.0.0.1:8080',
+    'http://127.0.0.1:5173',
+    'https://lirvana-voice-ui.vercel.app'
+  ],
   credentials: true
 }));
 app.use(express.json());
+
+// Mount AV-Sync router
+app.use('/api/avsync', avSyncRouter);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -39,7 +49,7 @@ app.post('/api/session', async (req, res) => {
         model: "gpt-4o-realtime-preview-2024-12-17",
         voice: "alloy", // Voice for DANI
         modalities: ["audio", "text"],
-        instructions: `# DANI - ASISTENTE VIRTUAL DE SOPORTE PRO SUMINISTROS V1.0
+        instructions: `# DANI - ASISTENTE VIRTUAL CON VERIFICACIÓN DE IDENTIDAD
 
 **Nombre:** Dani
 **Rol:** Asistente Virtual de Soporte Técnico Especializado de **Pro Suministros**
@@ -73,11 +83,56 @@ Es un placer ayudarte hoy. ¿En qué puedo asistirte?"
 - **Redes:** Wi-Fi, VPN, DNS, conectividad
 - **Seguridad:** Antivirus, MFA, certificates
 
+## VERIFICACIÓN DE IDENTIDAD (MUY IMPORTANTE)
+
+**TRIGGERS PARA VERIFICACIÓN:**
+Debes ejecutar la función av_sync_challenge cuando el usuario:
+- Diga "verifica mi identidad" o "verificar identidad"
+- Pida "validar identidad" o "validación"
+- Diga "quiero verificarme" o "necesito verificación"
+- Mencione "deepfake" o "detectar deepfake"
+- Pida "comprobar que soy yo" o "demostrar identidad"
+- Use frases como "¿soy real?" o "validar que soy humano"
+
+**CÓMO RESPONDER:**
+1. Confirma con mensaje amable: "Por supuesto, voy a iniciar el proceso de verificación de identidad. Este proceso utiliza tecnología avanzada de análisis de sincronía audio-visual."
+2. **IMPORTANTE:** Inmediatamente ejecuta la función av_sync_challenge
+3. La interfaz se abrirá automáticamente para guiar al usuario
+
+**NUNCA:**
+- No intentes verificar la identidad manualmente sin usar la función
+- No des instrucciones paso a paso tú mismo
+- No pidas que repitan frases sin ejecutar la función primero
+
 ## CIERRE PROFESIONAL
 "Ha sido un placer ayudarte, [Nombre]. Recuerda que estamos aquí 24/7
 para cualquier cosa que necesites. ¡Que tengas un excelente día!"`,
-        // Remove tools for now to focus on support functionality
-        // tools: [],
+        tools: [
+          {
+            type: "function",
+            name: "av_sync_challenge",
+            description: "Inicia un reto de verificación de sincronía audio-visual para detectar deepfakes y validar la identidad del usuario mediante análisis de la sincronización entre movimiento labial y audio. USA ESTA FUNCIÓN cuando el usuario pida verificar, validar o comprobar su identidad.",
+            parameters: {
+              type: "object",
+              properties: {
+                challenge_phrase: {
+                  type: "string",
+                  description: "Frase específica que el usuario debe repetir (opcional, se generará aleatoriamente si no se provee)"
+                },
+                difficulty: {
+                  type: "string",
+                  enum: ["easy", "medium", "hard"],
+                  description: "Dificultad del reto (easy: frase corta, medium: frase normal, hard: trabalenguas)"
+                },
+                reason: {
+                  type: "string",
+                  description: "Razón por la cual se solicita la verificación (para contexto del usuario)"
+                }
+              },
+              required: []
+            }
+          }
+        ],
       }),
     });
 

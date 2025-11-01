@@ -12,6 +12,56 @@ dist
 dist-ssr
 *.local
 
+# Environment variables (IMPORTANT: Never commit API keys!)
+.env
+.env.local
+.env.*.local
+**/.env
+**/server/.env
+**/syncnet-service/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+venv/
+env/
+ENV/
+
+# Temporary files and uploads
+tmp/
+temp/
+*.tmp
+uploads/
+**/tmp/
+**/temp/
+**/uploads/
+
+# Model files (large binaries)
+*.pth
+*.model
+*.ckpt
+*.pt
+*.weights
+models/*.pth
+models/*.model
+
+# Video processing temporary files
+*.avi
+*.webm
+*.mp4
+pycrop/
+pywork/
+pyavi/
+pytmp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

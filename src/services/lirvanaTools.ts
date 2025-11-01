@@ -105,7 +105,8 @@ export class LirvanaTools {
       this.getExposolarInfoTool(),
       this.getCompanyInfoTool(),
       this.getRedirectSupportTool(),
-      this.getWebSearchTool()
+      this.getWebSearchTool(),
+      this.getAVSyncChallengeTool() // NEW: Deepfake detection
     ];
   }
 
@@ -645,6 +646,55 @@ export class LirvanaTools {
     return message;
   }
 
+  // AV-Sync challenge tool (NEW)
+  private getAVSyncChallengeTool(): RealtimeTool {
+    return {
+      name: 'av_sync_challenge',
+      description: 'Inicia un reto de verificación de sincronía audio-visual para detectar deepfakes y validar la identidad del usuario mediante análisis de la sincronización entre movimiento labial y audio',
+      parameters: {
+        type: 'object',
+        properties: {
+          challenge_phrase: {
+            type: 'string',
+            description: 'Frase específica que el usuario debe repetir (opcional, se generará aleatoriamente si no se provee)'
+          },
+          difficulty: {
+            type: 'string',
+            enum: ['easy', 'medium', 'hard'],
+            description: 'Dificultad del reto (easy: frase corta, medium: frase normal, hard: trabalenguas)'
+          },
+          reason: {
+            type: 'string',
+            description: 'Razón por la cual se solicita la verificación (para contexto del usuario)'
+          }
+        },
+        required: []
+      }
+    };
+  }
+
+  // Handler for AV-Sync challenge (NEW)
+  async handleAVSyncChallenge(params: any): Promise<any> {
+    try {
+      // This handler just signals that the challenge should start
+      // The actual UI handling is done in useLirvana hook
+      return {
+        success: true,
+        message: 'Verificación de identidad iniciada. Por favor, sigue las instrucciones en pantalla.',
+        challenge_phrase: params.challenge_phrase || null,
+        difficulty: params.difficulty || 'easy',
+        reason: params.reason || 'Verificación de seguridad estándar'
+      };
+    } catch (error) {
+      console.error('Error in AV-Sync challenge:', error);
+      return {
+        success: false,
+        error: 'Error iniciando verificación',
+        message: 'No pude iniciar la verificación de identidad. Por favor, intenta de nuevo.'
+      };
+    }
+  }
+
   // Get all tool handlers
   getToolHandlers(): Map<string, Function> {
     const handlers = new Map<string, Function>();
@@ -657,6 +707,7 @@ export class LirvanaTools {
     handlers.set('company_info', this.handleCompanyInfo.bind(this));
     handlers.set('redirect_to_support', this.handleSupportRedirect.bind(this));
     handlers.set('web_search', this.handleWebSearch.bind(this));
+    handlers.set('av_sync_challenge', this.handleAVSyncChallenge.bind(this)); // NEW
 
     return handlers;
   }

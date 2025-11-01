@@ -5,9 +5,11 @@ import Orb from "@/components/3d-orb";
 import { ConsentBanner } from "@/components/ConsentBanner";
 import { ChatBox } from "@/components/ChatBox";
 import { ChipButton } from "@/components/ChipButton";
+import AVSyncChallengeModal from "@/components/AVSyncChallengeModal";
 import { toast } from "sonner";
 import { useLirvana } from "@/hooks/useLirvana";
 import { appConfig, log } from "@/config/appConfig";
+import { v4 as uuidv4 } from "uuid";
 
 const Index = () => {
   const [showConsent, setShowConsent] = useState(true);
@@ -15,6 +17,7 @@ const Index = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [language, setLanguage] = useState<'es' | 'en'>('es');
+  const [sessionId] = useState(() => uuidv4());
 
   // Initialize Lirvana system
   const lirvana = useLirvana({
@@ -258,6 +261,15 @@ const Index = () => {
         currentVolume={lirvana.audioLevel}
         isSessionActive={lirvana.isConnected}
         connectionStatus={lirvana.connectionStatus}
+      />
+
+      {/* AV-Sync Challenge Modal (NEW) */}
+      <AVSyncChallengeModal
+        isOpen={lirvana.isChallengeActive}
+        onClose={lirvana.handleChallengeClose}
+        onComplete={lirvana.handleChallengeComplete}
+        challengePhrase={lirvana.challengePhrase || undefined}
+        sessionId={sessionId}
       />
     </div>
   );

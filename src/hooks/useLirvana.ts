@@ -44,6 +44,10 @@ interface UseLirvanaReturn {
   assignedExecutive: Executive | null;
   language: 'es' | 'en';
 
+  // AV-Sync Challenge state (NEW)
+  isChallengeActive: boolean;
+  challengePhrase: string | null;
+
   // Methods
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -55,6 +59,10 @@ interface UseLirvanaReturn {
   // Business methods
   processLocationInput: (input: string) => Promise<boolean>;
   redirectToWhatsApp: (redirection: WhatsAppRedirection) => void;
+
+  // AV-Sync Challenge methods (NEW)
+  handleChallengeComplete: (result: any) => void;
+  handleChallengeClose: () => void;
 
   // Error handling
   error: string | null;
@@ -85,14 +93,23 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     metadata: {}
   });
 
+  // AV-Sync Challenge state (NEW)
+  const [isChallengeActive, setIsChallengeActive] = useState(false);
+  const [challengePhrase, setChallengePhrase] = useState<string | null>(null);
+
   // Refs
   const toolsRef = useRef<LirvanaTools | null>(null);
   const isInitializedRef = useRef(false);
 
   // Initialize tools
+  const [tools, setTools] = useState<any[]>([]);
+
   useEffect(() => {
     if (!isInitializedRef.current) {
       toolsRef.current = new LirvanaTools();
+      // Get tools for WebRTC registration
+      const toolDefinitions = toolsRef.current.getTools();
+      setTools(toolDefinitions);
       isInitializedRef.current = true;
     }
   }, []);
@@ -100,7 +117,7 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
   // Hooks - Replace useRealtime with useWebRTC
   const webrtc = useWebRTC(
     'alloy', // Voice setting - valid for Realtime API
-    [] // Tools will be registered separately
+    tools // Pass tools from LirvanaTools to WebRTC
   );
 
   const audio = useAudio({
@@ -149,6 +166,19 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
             } else if (toolName === 'redirect_to_sales' && result.success) {
               setAssignedExecutive(result.executive);
               updateContext({ assigned_executive: result.executive, stage: 'redirection' });
+            } else if (toolName === 'av_sync_challenge' && result.success) {
+              // NEW: Activate AV-Sync challenge modal
+              log('info', '🎯 AV-Sync challenge function executed successfully!', result);
+              console.log('🎯 Setting challenge phrase:', result.challenge_phrase);
+              console.log('🎯 Opening modal - setting isChallengeActive to TRUE');
+
+              setChallengePhrase(result.challenge_phrase);
+              setIsChallengeActive(true);
+
+              console.log('🎯 Modal state updated. Modal should open now.');
+            } else if (toolName === 'av_sync_challenge' && !result.success) {
+              log('error', '❌ AV-Sync challenge function failed', result);
+              console.error('❌ Function returned success=false:', result);
             }
 
             return result;
@@ -369,6 +399,33 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     }
   }, [webrtc.isSessionActive, webrtc.currentVolume, speech.isRecognizing, speech.isSpeaking]);
 
+  // AV-Sync Challenge handlers (NEW)
+  const handleChallengeComplete = useCallback((result: any) => {
+    log('info', 'AV-Sync challenge completed', result);
+    setIsChallengeActive(false);
+
+    // Handle decision
+    if (result.decision === 'ALLOW') {
+      // Early-exit: user verified
+      log('info', 'User verified successfully (early-exit)');
+      // Continue conversation normally
+    } else if (result.decision === 'NEXT') {
+      // Additional challenge required
+      log('warn', 'Additional verification required');
+      // TODO: Trigger next challenge (e.g., light/shadow test)
+    } else {
+      // BLOCK: high risk
+      log('error', 'High risk detected - user verification failed');
+      // TODO: Implement alternative auth or block
+    }
+  }, []);
+
+  const handleChallengeClose = useCallback(() => {
+    log('info', 'AV-Sync challenge closed');
+    setIsChallengeActive(false);
+    setChallengePhrase(null);
+  }, []);
+
   // Error aggregation
   const aggregatedError = error || webrtc.error ||
     (audio.error ? `Audio: ${audio.error.message}` : null);
@@ -403,6 +460,10 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     assignedExecutive,
     language,
 
+    // AV-Sync Challenge state (NEW)
+    isChallengeActive,
+    challengePhrase,
+
     // Methods
     connect,
     disconnect,
@@ -414,6 +475,10 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     // Business methods
     processLocationInput,
     redirectToWhatsApp,
+
+    // AV-Sync Challenge methods (NEW)
+    handleChallengeComplete,
+    handleChallengeClose,
 
     // Error handling
     error: aggregatedError,

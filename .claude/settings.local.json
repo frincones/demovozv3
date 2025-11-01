@@ -17,9 +17,25 @@
       "Bash(npm:*)",
       "Bash(git remote add:*)",
       "Bash(git config:*)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(tree:*)",
+      "Bash(wc:*)",
+      "Bash(mkdir:*)",
+      "Bash(curl:*)",
+      "Bash(awk:*)",
+      "Bash(xargs kill:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 list:*)",
+      "Bash(pip3 install opencv-contrib-python scenedetect==0.5.1 python_speech_features torchvision)",
+      "Bash(sudo apt-get:*)",
+      "Bash(pkill:*)",
+      "Bash(pip3 install:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "outputStyle": "default"
 }
