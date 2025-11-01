@@ -59,6 +59,15 @@ export const ResultFeedback: React.FC<ResultFeedbackProps> = ({
             message: avSyncService.getDecisionMessage(result),
           };
         }
+      case 'SUSPICIOUS_PERFECT':
+        return {
+          icon: AlertTriangle,
+          iconColor: 'text-orange-600',
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-200',
+          title: '⚠️ Sincronización Sospechosa',
+          message: avSyncService.getDecisionMessage(result),
+        };
       case 'BLOCK':
         return {
           icon: XCircle,

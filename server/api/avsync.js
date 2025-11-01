@@ -125,8 +125,13 @@ router.post('/score', upload.single('video'), async (req, res) => {
 
     const result = await pythonResponse.json();
 
-    // Calculate decision based on score and offset
-    const decision = makeDecision(result.score, result.offset_frames);
+    // Calculate decision based on score, offset, and additional metrics
+    const decision = makeDecision(
+      result.score,
+      result.offset_frames,
+      result.confidence,
+      result.min_dist
+    );
 
     // Generate reason codes
     const reasonCodes = generateReasonCodes(result, decision);
@@ -185,8 +190,25 @@ router.post('/score', upload.single('video'), async (req, res) => {
  * - 60-79%: Medium confidence - Probably human
  * - 40-59%: Suspicious - Requires additional verification
  * - < 40%: High risk - Possible deepfake/manipulation
+ *
+ * IMPORTANT: Detects "suspiciously perfect" videos which may indicate
+ * modern AI-generated deepfakes that have perfect sync (see DEEPFAKE_DETECTION_LIMITATIONS.md)
  */
-function makeDecision(score, offsetFrames) {
+function makeDecision(score, offsetFrames, confidence, minDist) {
+  // Check for suspiciously perfect metrics (modern AI deepfakes)
+  // Real human videos rarely have perfect synchronization
+  const isSuspiciouslyPerfect = (
+    score >= 0.95 &&
+    Math.abs(offsetFrames) === 0 &&
+    confidence > 10.0 &&
+    minDist < 6.0
+  );
+
+  if (isSuspiciouslyPerfect) {
+    console.log('[AVSync] WARNING: Suspiciously perfect metrics detected - possible AI-generated video');
+    return 'SUSPICIOUS_PERFECT';
+  }
+
   // High confidence (≥80%): Very likely human - ALLOW
   if (score >= 0.80) {
     return 'ALLOW';
@@ -254,6 +276,12 @@ function generateReasonCodes(result, decision) {
 
   // Decision reason
   reasons.push(`DECISION_${decision}`);
+
+  // Add warning for suspiciously perfect metrics
+  if (decision === 'SUSPICIOUS_PERFECT') {
+    reasons.push('SUSPICIOUSLY_PERFECT_SYNC');
+    reasons.push('POSSIBLE_AI_GENERATED');
+  }
 
   return reasons;
 }

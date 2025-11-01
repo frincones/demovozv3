@@ -26,7 +26,7 @@ export interface AVSyncScoreResponse {
   lag_ms: number;
 
   // Decision
-  decision: 'ALLOW' | 'NEXT' | 'BLOCK';
+  decision: 'ALLOW' | 'NEXT' | 'BLOCK' | 'SUSPICIOUS_PERFECT';
   reason_codes: string[];
 
   // Metadata
@@ -210,20 +210,23 @@ export class AVSyncService {
   getDecisionMessage(response: AVSyncScoreResponse): string {
     switch (response.decision) {
       case 'ALLOW':
-        return 'Verificación exitosa. Identidad confirmada como humano real.';
+        return 'Verificación exitosa. Alta sincronización audio-visual detectada.';
 
       case 'NEXT':
         // Differentiate message based on score range
         if (response.score >= 0.60) {
           // 60-79%: Probably human, medium confidence
-          return 'Video humano real detectado. La calidad del video puede afectar el puntaje final.';
+          return 'Sincronización audio-visual aceptable. La calidad del video puede afectar el puntaje final.';
         } else {
           // 40-59%: Suspicious, requires additional verification
           return 'Verificación inconclusa. Se recomienda un desafío adicional.';
         }
 
+      case 'SUSPICIOUS_PERFECT':
+        return '⚠️ ALERTA: Sincronización sospechosamente perfecta detectada. Posible video generado por IA. Los deepfakes modernos pueden tener sincronización perfecta.';
+
       case 'BLOCK':
-        return 'Alto riesgo de manipulación detectado. Por favor, intenta de nuevo o usa un método alternativo.';
+        return 'Alto riesgo de manipulación detectado. Desincronización audio-visual significativa.';
 
       default:
         return 'Resultado de verificación desconocido.';
@@ -236,12 +239,14 @@ export class AVSyncService {
    * @param decision - Decision code
    * @returns Tailwind color class
    */
-  getDecisionColor(decision: 'ALLOW' | 'NEXT' | 'BLOCK'): string {
+  getDecisionColor(decision: 'ALLOW' | 'NEXT' | 'BLOCK' | 'SUSPICIOUS_PERFECT'): string {
     switch (decision) {
       case 'ALLOW':
         return 'text-green-600';
       case 'NEXT':
         return 'text-yellow-600';
+      case 'SUSPICIOUS_PERFECT':
+        return 'text-orange-600';
       case 'BLOCK':
         return 'text-red-600';
       default:
@@ -255,12 +260,14 @@ export class AVSyncService {
    * @param decision - Decision code
    * @returns Emoji icon
    */
-  getDecisionIcon(decision: 'ALLOW' | 'NEXT' | 'BLOCK'): string {
+  getDecisionIcon(decision: 'ALLOW' | 'NEXT' | 'BLOCK' | 'SUSPICIOUS_PERFECT'): string {
     switch (decision) {
       case 'ALLOW':
         return '✅';
       case 'NEXT':
         return '⚠️';
+      case 'SUSPICIOUS_PERFECT':
+        return '🤖';
       case 'BLOCK':
         return '❌';
       default:

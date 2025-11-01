@@ -246,16 +246,16 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Verificación de Identidad</span>
+      <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-white z-10 pb-4">
+          <DialogTitle className="flex items-center justify-between text-base sm:text-lg">
+            <span className="truncate">Verificación de Identidad</span>
             {state !== 'recording' && state !== 'processing' && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClose}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 flex-shrink-0 ml-2"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -263,7 +263,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Instructions State */}
           {state === 'instructions' && (
             <div className="space-y-4">
