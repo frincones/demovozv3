@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Info, X } from 'lucide-react';
+import { Loader2, Info, X, Upload } from 'lucide-react';
 import { useVideoCapture } from '@/hooks/useVideoCapture';
 import avSyncService, { type AVSyncScoreResponse } from '@/services/avSyncService';
 import VideoPreview from './VideoPreview';
@@ -20,8 +20,12 @@ type ChallengeState =
   | 'ready'          // Ready to start
   | 'countdown'      // 3-2-1 countdown
   | 'recording'      // Recording video
+  | 'file-select'    // Select file to upload (upload mode)
+  | 'preview'        // Preview uploaded file (upload mode)
   | 'processing'     // Analyzing video
   | 'result';        // Showing result
+
+type UploadMode = 'live' | 'upload';
 
 interface AVSyncChallengeModalProps {
   isOpen: boolean;
@@ -52,6 +56,8 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
   const [result, setResult] = useState<AVSyncScoreResponse | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [userConsent, setUserConsent] = useState(false);
+  const [uploadMode, setUploadMode] = useState<UploadMode>('live');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
   // Video capture hook
   const {
@@ -75,6 +81,8 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setResult(null);
       setApiError(null);
       setUserConsent(false);
+      setUploadMode('live');
+      setUploadedFile(null);
       resetCapture();
 
       // Randomize phrase
@@ -100,6 +108,37 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     }
   };
 
+  // Handle file selection for upload mode
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('video/')) {
+      setApiError('Por favor selecciona un archivo de video válido');
+      log('error', '[AVSyncChallenge] Invalid file type:', file.type);
+      return;
+    }
+
+    // Validate file size (10 MB max)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setApiError(`El video no debe superar 10 MB (tamaño actual: ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      log('error', '[AVSyncChallenge] File too large:', file.size);
+      return;
+    }
+
+    log('info', '[AVSyncChallenge] File selected', {
+      name: file.name,
+      size: `${(file.size / 1024).toFixed(2)} KB`,
+      type: file.type,
+    });
+
+    setUploadedFile(file);
+    setState('preview');
+    setApiError(null);
+  };
+
   // Handle start recording
   const handleStartRecording = async () => {
     try {
@@ -122,29 +161,41 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 
   // Handle video processing
   const handleProcessVideo = async () => {
-    if (!recordedBlob) return;
+    // Determine which blob to use based on upload mode
+    let videoBlob: Blob;
+
+    if (uploadMode === 'live') {
+      if (!recordedBlob) return;
+      videoBlob = recordedBlob;
+    } else {
+      if (!uploadedFile) return;
+      videoBlob = uploadedFile; // File extends Blob
+    }
 
     try {
       setState('processing');
       setApiError(null);
 
       log('info', '[AVSyncChallenge] Processing video...', {
-        size: recordedBlob.size,
-        type: recordedBlob.type,
+        mode: uploadMode,
+        size: videoBlob.size,
+        type: videoBlob.type,
       });
 
       const response = await avSyncService.scoreVideo({
-        videoBlob: recordedBlob,
+        videoBlob: videoBlob,
         sessionId: sessionId,
         userConsent: true,
         metadata: {
-          challengePhrase: phrase,
+          challengePhrase: uploadMode === 'live' ? phrase : 'archivo_cargado',
+          uploadMode: uploadMode,
           timestamp: new Date().toISOString(),
           userAgent: navigator.userAgent,
         },
       });
 
       log('info', '[AVSyncChallenge] Analysis complete', {
+        mode: uploadMode,
         score: response.score,
         decision: response.decision,
       });
@@ -155,7 +206,9 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     } catch (error: any) {
       log('error', '[AVSyncChallenge] Processing error:', error);
       setApiError(error.message || 'Error procesando video');
-      setState('ready');
+
+      // Return to appropriate state based on mode
+      setState(uploadMode === 'live' ? 'ready' : 'preview');
     }
   };
 
@@ -163,8 +216,15 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
   const handleRetry = () => {
     setResult(null);
     setApiError(null);
+    setUploadedFile(null);
     resetCapture();
-    setState('ready');
+
+    // Return to appropriate state based on mode
+    if (uploadMode === 'live') {
+      setState('ready');
+    } else {
+      setState('file-select');
+    }
   };
 
   // Handle continue
@@ -210,28 +270,88 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  Para verificar tu identidad, necesitamos grabar un breve video (4 segundos)
-                  donde repitas una frase en voz alta. Esto nos ayuda a confirmar que eres
-                  una persona real.
+                  Para verificar tu identidad, analizaremos un video con sincronización audio-visual.
+                  Puedes grabarlo en vivo o subir un archivo pregrabado.
                 </AlertDescription>
               </Alert>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h3 className="font-semibold text-blue-900 mb-2">
-                  Frase a repetir:
+              {/* Mode selector */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                <h3 className="font-semibold text-gray-900">
+                  ¿Cómo deseas verificar tu identidad?
                 </h3>
-                <p className="text-2xl font-bold text-blue-700 text-center py-4">
-                  "{phrase}"
-                </p>
+
+                <div className="space-y-2">
+                  <label className="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                    style={{ borderColor: uploadMode === 'live' ? '#3b82f6' : '#e5e7eb' }}>
+                    <input
+                      type="radio"
+                      name="uploadMode"
+                      value="live"
+                      checked={uploadMode === 'live'}
+                      onChange={() => setUploadMode('live')}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Grabar video en vivo</div>
+                      <div className="text-sm text-gray-600">
+                        Graba un video de 4 segundos usando tu cámara y micrófono
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                    style={{ borderColor: uploadMode === 'upload' ? '#3b82f6' : '#e5e7eb' }}>
+                    <input
+                      type="radio"
+                      name="uploadMode"
+                      value="upload"
+                      checked={uploadMode === 'upload'}
+                      onChange={() => setUploadMode('upload')}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">Subir video grabado</div>
+                      <div className="text-sm text-gray-600">
+                        Sube un archivo de video (.mp4, .webm, .avi, .mov) de hasta 10 MB
+                      </div>
+                    </div>
+                  </label>
+                </div>
               </div>
 
+              {/* Instructions based on selected mode */}
+              {uploadMode === 'live' && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-blue-900 mb-2">
+                    Frase a repetir:
+                  </h3>
+                  <p className="text-2xl font-bold text-blue-700 text-center py-4">
+                    "{phrase}"
+                  </p>
+                </div>
+              )}
+
               <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm text-gray-700">
-                <h4 className="font-semibold text-gray-900">Instrucciones:</h4>
+                <h4 className="font-semibold text-gray-900">
+                  {uploadMode === 'live' ? 'Instrucciones para grabación:' : 'Requisitos del video:'}
+                </h4>
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Asegúrate de estar en un lugar bien iluminado</li>
-                  <li>Posiciona tu rostro frente a la cámara</li>
-                  <li>Habla claramente la frase completa</li>
-                  <li>El video se grabará automáticamente durante 4 segundos</li>
+                  {uploadMode === 'live' ? (
+                    <>
+                      <li>Asegúrate de estar en un lugar bien iluminado</li>
+                      <li>Posiciona tu rostro frente a la cámara</li>
+                      <li>Habla claramente la frase completa</li>
+                      <li>El video se grabará automáticamente durante 4 segundos</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>El video debe mostrar tu rostro claramente hablando</li>
+                      <li>Duración mínima: 4 segundos</li>
+                      <li>Buena iluminación y calidad de audio</li>
+                      <li>Formatos aceptados: MP4, WebM, AVI, MOV (máx. 10 MB)</li>
+                    </>
+                  )}
                 </ul>
               </div>
 
@@ -250,11 +370,17 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
               </div>
 
               <Button
-                onClick={handleRequestPermissions}
+                onClick={() => {
+                  if (uploadMode === 'live') {
+                    handleRequestPermissions();
+                  } else {
+                    setState('file-select');
+                  }
+                }}
                 disabled={!userConsent}
                 className="w-full"
               >
-                Comenzar Verificación
+                {uploadMode === 'live' ? 'Comenzar Grabación' : 'Seleccionar Video'}
               </Button>
             </div>
           )}
@@ -322,6 +448,102 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                     : `Di ahora: "${phrase}"`
                   }
                 </p>
+              </div>
+            </div>
+          )}
+
+          {/* File Select State */}
+          {state === 'file-select' && (
+            <div className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 hover:border-blue-400 transition-colors">
+                <input
+                  type="file"
+                  accept="video/webm,video/mp4,video/avi,video/x-msvideo,video/quicktime,video/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="video-upload"
+                />
+                <label
+                  htmlFor="video-upload"
+                  className="flex flex-col items-center cursor-pointer"
+                >
+                  <Upload className="w-16 h-16 text-gray-400 mb-4" />
+                  <p className="text-lg font-medium text-gray-900 mb-2">
+                    Selecciona un archivo de video
+                  </p>
+                  <p className="text-sm text-gray-600 text-center">
+                    Formatos: MP4, WebM, AVI, MOV
+                    <br />
+                    Tamaño máximo: 10 MB
+                  </p>
+                </label>
+              </div>
+
+              {apiError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{apiError}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button
+                variant="outline"
+                onClick={() => setState('instructions')}
+                className="w-full"
+              >
+                Volver
+              </Button>
+            </div>
+          )}
+
+          {/* Preview State */}
+          {state === 'preview' && uploadedFile && (
+            <div className="space-y-4">
+              {/* Video preview */}
+              <div className="bg-black rounded-lg overflow-hidden">
+                <video
+                  src={URL.createObjectURL(uploadedFile)}
+                  controls
+                  className="w-full max-h-96"
+                />
+              </div>
+
+              {/* File info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-900 mb-2">
+                  Información del archivo:
+                </h3>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <p><strong>Nombre:</strong> {uploadedFile.name}</p>
+                  <p><strong>Tamaño:</strong> {(uploadedFile.size / 1024).toFixed(2)} KB</p>
+                  <p><strong>Tipo:</strong> {uploadedFile.type}</p>
+                </div>
+              </div>
+
+              {apiError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{apiError}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setUploadedFile(null);
+                    setState('file-select');
+                  }}
+                  className="flex-1"
+                >
+                  Cambiar Video
+                </Button>
+
+                <Button
+                  onClick={handleProcessVideo}
+                  className="flex-1"
+                >
+                  Analizar Video
+                </Button>
               </div>
             </div>
           )}
