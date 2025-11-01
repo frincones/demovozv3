@@ -157,12 +157,12 @@ class SyncNetWrapper:
 
             logger.info(f"Running SyncNet pipeline: {' '.join(cmd)}")
 
-            # Execute pipeline
+            # Execute pipeline (increased timeout for CPU processing)
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=30,
+                timeout=120,  # Increased to 2 minutes for CPU processing
                 cwd=str(self.syncnet_repo_path)
             )
 
@@ -210,7 +210,7 @@ class SyncNetWrapper:
                 syncnet_cmd,
                 capture_output=True,
                 text=True,
-                timeout=60,  # SyncNet analysis can take longer
+                timeout=180,  # SyncNet analysis can take up to 3 minutes on CPU
                 cwd=str(self.syncnet_repo_path)
             )
 

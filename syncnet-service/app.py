@@ -34,12 +34,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Get absolute paths for models
+BASE_DIR = Path(__file__).parent.absolute()
+
 # Configuration
 CONFIG = {
-    'model_path': os.getenv('MODEL_PATH', './models/syncnet_v2.model'),
-    'detector_path': os.getenv('DETECTOR_PATH', './models/sfd_face.pth'),
-    'tmp_dir': os.getenv('TMP_DIR', './tmp'),
-    'upload_dir': os.getenv('UPLOAD_DIR', './tmp/uploads'),
+    'model_path': os.getenv('MODEL_PATH', str(BASE_DIR / 'models' / 'syncnet_v2.model')),
+    'detector_path': os.getenv('DETECTOR_PATH', str(BASE_DIR / 'models' / 'sfd_face.pth')),
+    'tmp_dir': os.getenv('TMP_DIR', str(BASE_DIR / 'tmp')),
+    'upload_dir': os.getenv('UPLOAD_DIR', str(BASE_DIR / 'tmp' / 'uploads')),
     'max_video_size_mb': int(os.getenv('MAX_VIDEO_SIZE_MB', '10')),
     'processing_timeout': int(os.getenv('PROCESSING_TIMEOUT_SECONDS', '30')),
 }
