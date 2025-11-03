@@ -32,7 +32,9 @@
       "Bash(pip3 install:*)",
       "Bash(find:*)",
       "Bash(cat:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(echo:*)",
+      "Bash(/workspaces/demovozv3/syncnet-service/requirements.txt)"
     ],
     "deny": [],
     "ask": []
