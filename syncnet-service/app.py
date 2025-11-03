@@ -1,6 +1,7 @@
 """
-Flask server for AV-Sync analysis using SyncNet
+Flask server for AV-Sync analysis using Ensemble (SyncNet + EfficientNet + ViT v2)
 Provides REST API for deepfake detection via audio-visual synchronization
+UPDATED: 2025-11-03 - Integrated EfficientNet Detector + Vision Transformer v2
 """
 
 from flask import Flask, request, jsonify
@@ -14,7 +15,19 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Import SyncNet wrapper (will be created)
+# [NUEVO] Import Ensemble Orchestrator
+try:
+    from ensemble.orchestrator import EnsembleOrchestrator
+    from ensemble.efficientnet_detector import EfficientNetDetector
+    from ensemble.vit_detector import ViTDetector
+    ENSEMBLE_AVAILABLE = True
+    VIT_AVAILABLE = True
+except ImportError as e:
+    ENSEMBLE_AVAILABLE = False
+    VIT_AVAILABLE = False
+    logging.warning(f"Ensemble not available - running in legacy mode: {e}")
+
+# [EXISTENTE] Import SyncNet wrapper
 try:
     from syncnet_wrapper import SyncNetWrapper
     SYNCNET_AVAILABLE = True
@@ -37,56 +50,134 @@ logger = logging.getLogger(__name__)
 # Get absolute paths for models
 BASE_DIR = Path(__file__).parent.absolute()
 
-# Configuration
+# [ACTUALIZADO] Configuration
 CONFIG = {
+    # SyncNet (existente)
+    'syncnet_enabled': os.getenv('SYNCNET_ENABLED', 'true').lower() == 'true',
     'model_path': os.getenv('MODEL_PATH', str(BASE_DIR / 'models' / 'syncnet_v2.model')),
     'detector_path': os.getenv('DETECTOR_PATH', str(BASE_DIR / 'models' / 'sfd_face.pth')),
     'tmp_dir': os.getenv('TMP_DIR', str(BASE_DIR / 'tmp')),
     'upload_dir': os.getenv('UPLOAD_DIR', str(BASE_DIR / 'tmp' / 'uploads')),
     'max_video_size_mb': int(os.getenv('MAX_VIDEO_SIZE_MB', '10')),
     'processing_timeout': int(os.getenv('PROCESSING_TIMEOUT_SECONDS', '30')),
+
+    # [NUEVO] EfficientNet configuration
+    'efficientnet_enabled': os.getenv('EFFICIENTNET_ENABLED', 'false').lower() == 'true',
+    'efficientnet_model_path': os.getenv(
+        'EFFICIENTNET_MODEL_PATH',
+        str(BASE_DIR / 'models' / 'efficientnet' / 'best_model-v3.pt')
+    ),
+    'efficientnet_device': os.getenv('EFFICIENTNET_DEVICE', 'cpu'),
+    'efficientnet_max_frames': int(os.getenv('EFFICIENTNET_MAX_FRAMES', '20')),
+
+    # [NUEVO] ViT v2 configuration
+    'vit_enabled': os.getenv('VIT_ENABLED', 'true').lower() == 'true',
+    'vit_model_name': os.getenv('VIT_MODEL_NAME', 'prithivMLmods/Deep-Fake-Detector-v2-Model'),
+    'vit_device': os.getenv('VIT_DEVICE', 'cpu'),
+    'vit_max_frames': int(os.getenv('VIT_MAX_FRAMES', '20')),
+
+    # [NUEVO] Ensemble weights (updated for 3 detectors)
+    'ensemble_weight_syncnet': float(os.getenv('ENSEMBLE_WEIGHT_SYNCNET', '0.3')),
+    'ensemble_weight_efficientnet': float(os.getenv('ENSEMBLE_WEIGHT_EFFICIENTNET', '0.0')),
+    'ensemble_weight_vit': float(os.getenv('ENSEMBLE_WEIGHT_VIT', '0.7')),
 }
 
-# Initialize SyncNet (lazy loading)
-syncnet_instance = None
+# [NUEVO] Initialize Ensemble Orchestrator (lazy loading)
+ensemble_orchestrator = None
 
-def get_syncnet():
-    """Lazy initialization of SyncNet"""
-    global syncnet_instance
+def get_ensemble():
+    """Lazy initialization of Ensemble Orchestrator"""
+    global ensemble_orchestrator
 
-    if not SYNCNET_AVAILABLE:
-        return None
-
-    if syncnet_instance is None:
+    if ensemble_orchestrator is None:
         try:
-            logger.info("Initializing SyncNet...")
-            syncnet_instance = SyncNetWrapper(
-                model_path=CONFIG['model_path'],
-                detector_path=CONFIG['detector_path'],
-                tmp_dir=CONFIG['tmp_dir']
+            logger.info("[App] Initializing Ensemble Orchestrator...")
+
+            # Initialize SyncNet (if enabled)
+            syncnet = None
+            if CONFIG['syncnet_enabled'] and SYNCNET_AVAILABLE:
+                syncnet = SyncNetWrapper(
+                    model_path=CONFIG['model_path'],
+                    detector_path=CONFIG['detector_path'],
+                    tmp_dir=CONFIG['tmp_dir']
+                )
+                logger.info("[App] SyncNet initialized ✓")
+            else:
+                logger.info("[App] SyncNet disabled or not available ✗")
+
+            # Initialize EfficientNet (if enabled)
+            efficientnet = None
+            if CONFIG['efficientnet_enabled'] and ENSEMBLE_AVAILABLE:
+                efficientnet = EfficientNetDetector(
+                    model_path=CONFIG['efficientnet_model_path'],
+                    device=CONFIG['efficientnet_device']
+                )
+                logger.info("[App] EfficientNet initialized ✓")
+            else:
+                logger.info("[App] EfficientNet disabled or not available ✗")
+
+            # Initialize ViT v2 (if enabled)
+            vit = None
+            if CONFIG['vit_enabled'] and VIT_AVAILABLE:
+                logger.info("[App] Initializing ViT v2 (this may take a moment to download the model)...")
+                vit = ViTDetector(
+                    model_name=CONFIG['vit_model_name'],
+                    device=CONFIG['vit_device']
+                )
+                logger.info("[App] ViT v2 initialized ✓")
+            else:
+                logger.info("[App] ViT v2 disabled or not available ✗")
+
+            # Create orchestrator with all 3 detectors
+            ensemble_orchestrator = EnsembleOrchestrator(
+                syncnet_wrapper=syncnet,
+                efficientnet_detector=efficientnet,
+                vit_detector=vit,
+                weights={
+                    'syncnet': CONFIG['ensemble_weight_syncnet'],
+                    'efficientnet': CONFIG['ensemble_weight_efficientnet'],
+                    'vit': CONFIG['ensemble_weight_vit']
+                }
             )
-            logger.info("SyncNet initialized successfully")
+
+            logger.info("[App] Ensemble Orchestrator initialized successfully")
+
         except Exception as e:
-            logger.error(f"Failed to initialize SyncNet: {str(e)}")
+            logger.error(f"[App] Failed to initialize Ensemble: {str(e)}")
             return None
 
-    return syncnet_instance
+    return ensemble_orchestrator
 
 
 @app.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
-    syncnet = get_syncnet()
+    ensemble = get_ensemble()
 
     return jsonify({
         'status': 'healthy',
-        'service': 'syncnet-avsync',
-        'version': '1.0.0',
-        'syncnet_available': syncnet is not None,
-        'models_loaded': syncnet is not None,
+        'service': 'deepfake-detection-ensemble',
+        'version': '3.0.0',  # [ACTUALIZADO] Versión - Added ViT v2
+        'detectors': {
+            'syncnet': {
+                'enabled': CONFIG['syncnet_enabled'],
+                'available': SYNCNET_AVAILABLE and CONFIG['syncnet_enabled']
+            },
+            'efficientnet': {
+                'enabled': CONFIG['efficientnet_enabled'],
+                'available': CONFIG['efficientnet_enabled'] and ENSEMBLE_AVAILABLE
+            },
+            'vit_v2': {
+                'enabled': CONFIG['vit_enabled'],
+                'available': CONFIG['vit_enabled'] and VIT_AVAILABLE,
+                'model': CONFIG['vit_model_name']
+            }
+        },
+        'ensemble_available': ensemble is not None,
         'config': {
             'max_video_size_mb': CONFIG['max_video_size_mb'],
             'processing_timeout': CONFIG['processing_timeout'],
+            'efficientnet_max_frames': CONFIG['efficientnet_max_frames'],
         }
     })
 
@@ -94,7 +185,10 @@ def health():
 @app.route('/score', methods=['POST'])
 def score_video():
     """
-    Analyze audio-visual synchronization of a video
+    Analyze video using Ensemble (SyncNet + EfficientNet)
+
+    [MODIFICADO] Ahora usa EnsembleOrchestrator en lugar de solo SyncNet
+    [COMPATIBLE] Mantiene la misma API request/response
 
     Request JSON:
     {
@@ -102,16 +196,7 @@ def score_video():
         "session_id": "sess_xyz"
     }
 
-    Response JSON:
-    {
-        "offset_frames": 3,
-        "confidence": 10.02,
-        "min_dist": 5.35,
-        "score": 0.91,
-        "lag_ms": 100,
-        "processing_time_ms": 7234,
-        "debug": {...}
-    }
+    Response JSON: Compatible con anterior + nuevos campos
     """
     start_time = time.time()
 
@@ -125,7 +210,7 @@ def score_video():
         video_path = data.get('video_path')
         session_id = data.get('session_id', 'unknown')
 
-        # Validate video_path
+        # Validate
         if not video_path:
             return jsonify({'error': 'video_path is required'}), 400
 
@@ -141,35 +226,37 @@ def score_video():
 
         logger.info(f'[{session_id}] Processing video: {video_path} ({file_size_mb:.2f} MB)')
 
-        # Get SyncNet instance
-        syncnet = get_syncnet()
+        # [MODIFICADO] Get Ensemble Orchestrator
+        ensemble = get_ensemble()
 
-        if syncnet is None:
-            # Demo mode - return mock data
-            logger.warning(f'[{session_id}] SyncNet not available - returning demo data')
+        if ensemble is None:
+            # [FALLBACK] Demo mode
+            logger.warning(f'[{session_id}] Ensemble not available - returning demo data')
             return jsonify({
                 'offset_frames': 2,
                 'confidence': 9.5,
                 'min_dist': 5.8,
                 'score': 0.88,
+                'combined_score': 0.88,
                 'lag_ms': 80.0,
+                'decision': 'ALLOW',
                 'processing_time_ms': 1000,
                 'demo_mode': True,
                 'debug': {
-                    'message': 'SyncNet not initialized - demo mode active'
+                    'message': 'Ensemble not initialized - demo mode active'
                 }
             })
 
-        # Process video with SyncNet
+        # [NUEVO] Process video with Ensemble
         try:
-            result = syncnet.process_video(video_path, session_id)
+            result = ensemble.analyze_video(video_path, session_id)
 
             processing_time_ms = int((time.time() - start_time) * 1000)
             result['processing_time_ms'] = processing_time_ms
 
             logger.info(
-                f'[{session_id}] Result: score={result["score"]:.3f}, '
-                f'offset={result["offset_frames"]}, time={processing_time_ms}ms'
+                f'[{session_id}] Result: score={result["combined_score"]:.3f}, '
+                f'decision={result["decision"]}, time={processing_time_ms}ms'
             )
 
             return jsonify(result)
@@ -215,9 +302,12 @@ if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
     debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
 
-    logger.info(f"Starting SyncNet service on port {port}")
+    logger.info(f"Starting Ensemble Deepfake Detection Service on port {port}")
     logger.info(f"Debug mode: {debug}")
-    logger.info(f"Model path: {CONFIG['model_path']}")
+    logger.info(f"SyncNet enabled: {CONFIG['syncnet_enabled']}")
+    logger.info(f"SyncNet model: {CONFIG['model_path']}")
+    logger.info(f"EfficientNet enabled: {CONFIG['efficientnet_enabled']}")
+    logger.info(f"EfficientNet model: {CONFIG['efficientnet_model_path']}")
     logger.info(f"Temp directory: {CONFIG['tmp_dir']}")
 
     # Ensure directories exist

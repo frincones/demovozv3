@@ -34,7 +34,10 @@
       "Bash(cat:*)",
       "Bash(lsof:*)",
       "Bash(echo:*)",
-      "Bash(/workspaces/demovozv3/syncnet-service/requirements.txt)"
+      "Bash(/workspaces/demovozv3/syncnet-service/requirements.txt)",
+      "Bash(cp:*)",
+      "Bash(touch:*)",
+      "Bash(VIDEO_PATH=\"/workspaces/demovozv3/syncnet-service/tmp/test_video.mp4\" curl -s -X POST http://localhost:5000/score -H \"Content-Type: application/json\" -d \"{\"\"video_path\"\": \"\"$VIDEO_PATH\"\", \"\"session_id\"\": \"\"test_api_call\"\"}\")"
     ],
     "deny": [],
     "ask": []

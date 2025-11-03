@@ -198,39 +198,32 @@ export class AVSyncService {
   /**
    * Interpret decision and return user-friendly message
    *
-   * Based on SyncNet paper calibration:
-   * - ALLOW (≥80%): High confidence - Very likely human
-   * - NEXT (60-79%): Medium confidence - Probably human
-   * - NEXT (40-59%): Suspicious - Requires verification
-   * - BLOCK (<40%): High risk - Possible deepfake
+   * Simplified messaging:
+   * - ALLOW (≥80%): "ES REAL y PASA LA VALIDACIÓN"
+   * - ALL OTHERS (<80%): "ES SOSPECHOSO y NO PASA LA VALIDACIÓN"
    *
    * @param response - API response
    * @returns User-friendly message
    */
   getDecisionMessage(response: AVSyncScoreResponse): string {
-    switch (response.decision) {
-      case 'ALLOW':
-        return 'Verificación exitosa. Alta sincronización audio-visual detectada.';
+    const score = response.score;
 
-      case 'NEXT':
-        // Differentiate message based on score range
-        if (response.score >= 0.60) {
-          // 60-79%: Probably human, medium confidence
-          return 'Sincronización audio-visual aceptable. La calidad del video puede afectar el puntaje final.';
-        } else {
-          // 40-59%: Suspicious, requires additional verification
-          return 'Verificación inconclusa. Se recomienda un desafío adicional.';
-        }
-
-      case 'SUSPICIOUS_PERFECT':
-        return '⚠️ ALERTA: Sincronización sospechosamente perfecta detectada. Posible video generado por IA. Los deepfakes modernos pueden tener sincronización perfecta.';
-
-      case 'BLOCK':
-        return 'Alto riesgo de manipulación detectado. Desincronización audio-visual significativa.';
-
-      default:
-        return 'Resultado de verificación desconocido.';
+    // Only ≥80% passes validation
+    if (score >= 0.80) {
+      return '✅ El video es REAL y PASA LA VALIDACIÓN';
     }
+
+    // Everything else is suspicious and requires verification
+    if (score >= 0.60) {
+      return '⚠️ El video es SOSPECHOSO y NO PASA LA VALIDACIÓN. Se requiere un segundo método de verificación.';
+    }
+
+    if (score >= 0.40) {
+      return '❌ El video es SOSPECHOSO y NO PASA LA VALIDACIÓN. Riesgo medio de manipulación detectado.';
+    }
+
+    // Very low scores
+    return '❌ El video es SOSPECHOSO y NO PASA LA VALIDACIÓN. Alto riesgo de manipulación o deepfake detectado.';
   }
 
   /**

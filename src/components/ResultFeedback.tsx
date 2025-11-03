@@ -26,66 +26,28 @@ export const ResultFeedback: React.FC<ResultFeedbackProps> = ({
 
   // Get decision-specific styling
   const getDecisionConfig = () => {
-    switch (decision) {
-      case 'ALLOW':
-        return {
-          icon: CheckCircle,
-          iconColor: 'text-green-600',
-          bgColor: 'bg-green-50',
-          borderColor: 'border-green-200',
-          title: 'Verificación Exitosa',
-          message: avSyncService.getDecisionMessage(result),
-        };
-      case 'NEXT':
-        // Differentiate title based on score range
-        if (score >= 0.60) {
-          // 60-79%: Probably human
-          return {
-            icon: CheckCircle,
-            iconColor: 'text-blue-600',
-            bgColor: 'bg-blue-50',
-            borderColor: 'border-blue-200',
-            title: 'Video Humano Detectado',
-            message: avSyncService.getDecisionMessage(result),
-          };
-        } else {
-          // 40-59%: Suspicious
-          return {
-            icon: AlertTriangle,
-            iconColor: 'text-yellow-600',
-            bgColor: 'bg-yellow-50',
-            borderColor: 'border-yellow-200',
-            title: 'Verificación Inconclusa',
-            message: avSyncService.getDecisionMessage(result),
-          };
-        }
-      case 'SUSPICIOUS_PERFECT':
-        return {
-          icon: AlertTriangle,
-          iconColor: 'text-orange-600',
-          bgColor: 'bg-orange-50',
-          borderColor: 'border-orange-200',
-          title: '⚠️ Sincronización Sospechosa',
-          message: avSyncService.getDecisionMessage(result),
-        };
-      case 'BLOCK':
-        return {
-          icon: XCircle,
-          iconColor: 'text-red-600',
-          bgColor: 'bg-red-50',
-          borderColor: 'border-red-200',
-          title: 'Alto Riesgo Detectado',
-          message: avSyncService.getDecisionMessage(result),
-        };
-      default:
-        return {
-          icon: AlertTriangle,
-          iconColor: 'text-gray-600',
-          bgColor: 'bg-gray-50',
-          borderColor: 'border-gray-200',
-          title: 'Resultado Desconocido',
-          message: 'No se pudo determinar el resultado',
-        };
+    // Simplified: Only ≥80% passes, everything else fails
+    if (score >= 0.80) {
+      return {
+        icon: CheckCircle,
+        iconColor: 'text-green-600',
+        bgColor: 'bg-green-50',
+        borderColor: 'border-green-200',
+        title: '✅ Verificación Exitosa',
+        message: avSyncService.getDecisionMessage(result),
+        passed: true,
+      };
+    } else {
+      // All scores <80% are suspicious and don't pass
+      return {
+        icon: XCircle,
+        iconColor: 'text-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        title: '❌ Verificación Fallida',
+        message: avSyncService.getDecisionMessage(result),
+        passed: false,
+      };
     }
   };
 
@@ -181,9 +143,43 @@ export const ResultFeedback: React.FC<ResultFeedbackProps> = ({
         </div>
       )}
 
+      {/* Summary: Why passed or failed */}
+      <div className={`${config.bgColor} ${config.borderColor} border rounded-lg p-4`}>
+        <h4 className="font-semibold text-gray-900 mb-2">
+          Resumen del Análisis:
+        </h4>
+        <div className="space-y-2 text-sm text-gray-700">
+          {score >= 0.80 ? (
+            <>
+              <p>✅ <strong>Puntaje alto:</strong> {avSyncService.formatScore(score)} indica que el video tiene alta probabilidad de ser real.</p>
+              <p>✅ <strong>Resultado:</strong> El video PASA la validación y puede continuar.</p>
+            </>
+          ) : score >= 0.60 ? (
+            <>
+              <p>⚠️ <strong>Puntaje medio:</strong> {avSyncService.formatScore(score)} indica sospecha de manipulación.</p>
+              <p>⚠️ <strong>Umbral requerido:</strong> Se necesita ≥80/100 para aprobar automáticamente.</p>
+              <p>❌ <strong>Resultado:</strong> El video NO PASA y requiere un segundo método de verificación.</p>
+            </>
+          ) : score >= 0.40 ? (
+            <>
+              <p>⚠️ <strong>Puntaje bajo:</strong> {avSyncService.formatScore(score)} indica riesgo medio de manipulación.</p>
+              <p>⚠️ <strong>Posible causa:</strong> Calidad del video baja, artefactos detectados, o posible deepfake.</p>
+              <p>❌ <strong>Resultado:</strong> El video NO PASA la validación. Recomendamos intentar con mejor iluminación o usar otro método.</p>
+            </>
+          ) : (
+            <>
+              <p>❌ <strong>Puntaje muy bajo:</strong> {avSyncService.formatScore(score)} indica alto riesgo de deepfake o manipulación.</p>
+              <p>❌ <strong>Detección:</strong> El sistema detectó múltiples artefactos sospechosos en el video.</p>
+              <p>❌ <strong>Resultado:</strong> El video NO PASA la validación. Se bloquea por seguridad.</p>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Actions */}
       <div className="flex gap-3">
-        {decision === 'ALLOW' && (
+        {score >= 0.80 ? (
+          // PASSED: Allow user to continue
           <Button
             onClick={onContinue}
             className="flex-1 bg-green-600 hover:bg-green-700"
@@ -191,9 +187,8 @@ export const ResultFeedback: React.FC<ResultFeedbackProps> = ({
             Continuar
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
-        )}
-
-        {decision === 'NEXT' && (
+        ) : (
+          // FAILED: Offer retry or alternative method
           <>
             <Button
               onClick={onRetry}
@@ -207,31 +202,9 @@ export const ResultFeedback: React.FC<ResultFeedbackProps> = ({
               onClick={onContinue}
               className="flex-1 bg-yellow-600 hover:bg-yellow-700"
             >
-              Siguiente Reto
+              Segundo Método
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
-          </>
-        )}
-
-        {decision === 'BLOCK' && (
-          <>
-            <Button
-              onClick={onRetry}
-              variant="outline"
-              className="flex-1"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Reintentar
-            </Button>
-            {onAlternativeAuth && (
-              <Button
-                onClick={onAlternativeAuth}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
-              >
-                Método Alternativo
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
           </>
         )}
       </div>
