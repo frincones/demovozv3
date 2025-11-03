@@ -35,6 +35,13 @@ except ImportError:
     VIT_AVAILABLE = False
     logging.warning("[Orchestrator] ViT not available")
 
+try:
+    from ensemble.efficientnetv2_detector import EfficientNetV2Detector
+    EFFICIENTNETV2_AVAILABLE = True
+except ImportError:
+    EFFICIENTNETV2_AVAILABLE = False
+    logging.warning("[Orchestrator] EfficientNetV2 not available")
+
 logger = logging.getLogger(__name__)
 
 
@@ -54,6 +61,7 @@ class EnsembleOrchestrator:
         syncnet_wrapper: Optional[SyncNetWrapper] = None,
         efficientnet_detector: Optional[EfficientNetDetector] = None,
         vit_detector: Optional[ViTDetector] = None,
+        efficientnetv2_detector: Optional['EfficientNetV2Detector'] = None,
         weights: Optional[Dict[str, float]] = None
     ):
         """
@@ -63,18 +71,21 @@ class EnsembleOrchestrator:
             syncnet_wrapper: Instance of SyncNetWrapper (opcional)
             efficientnet_detector: Instance of EfficientNetDetector (opcional)
             vit_detector: Instance of ViTDetector (opcional)
-            weights: Dict con pesos {'syncnet': 0.3, 'efficientnet': 0.0, 'vit': 0.7}
+            efficientnetv2_detector: Instance of EfficientNetV2Detector (opcional)
+            weights: Dict con pesos {'syncnet': 0.0, 'efficientnet': 0.0, 'vit': 0.0, 'efficientnetv2': 1.0}
         """
         self.syncnet = syncnet_wrapper
         self.efficientnet = efficientnet_detector
         self.vit = vit_detector
+        self.efficientnetv2 = efficientnetv2_detector
 
         # Default weights (ajustados según investigación)
-        # ViT v2 tiene 92% accuracy, es el más confiable
+        # EfficientNetV2-B2 tiene 99.885% accuracy, es el más preciso
         self.weights = weights or {
-            'syncnet': 0.3,       # Audio-visual sync (bueno para detección básica)
+            'syncnet': 0.0,       # Desactivado
             'efficientnet': 0.0,  # Desactivado (baja precisión ~70%)
-            'vit': 0.7,          # Mayor peso (92% accuracy, mejor detector)
+            'vit': 0.0,          # Desactivado (92% accuracy pero no el mejor)
+            'efficientnetv2': 1.0,  # ACTIVO (99.885% accuracy, MEJOR detector)
         }
 
         # Validate weights sum to 1.0
@@ -88,8 +99,9 @@ class EnsembleOrchestrator:
 
         logger.info(f"[Orchestrator] Initialized with weights: {self.weights}")
         logger.info(f"[Orchestrator] SyncNet: {'✓' if self.syncnet else '✗'}")
-        logger.info(f"[Orchestrator] EfficientNet: {'✓' if self.efficientnet else '✗'}")
+        logger.info(f"[Orchestrator] EfficientNet-B0: {'✓' if self.efficientnet else '✗'}")
         logger.info(f"[Orchestrator] ViT v2: {'✓' if self.vit else '✗'}")
+        logger.info(f"[Orchestrator] EfficientNetV2-B2: {'✓' if self.efficientnetv2 else '✗'}")
 
     def analyze_video(
         self,
@@ -159,6 +171,24 @@ class EnsembleOrchestrator:
             except Exception as e:
                 logger.error(f"[Orchestrator] ViT v2 failed: {e}")
                 errors['vit'] = str(e)
+
+        # 4. Run EfficientNetV2-B2 (si disponible)
+        if self.efficientnetv2:
+            try:
+                # Extract frames
+                extractor = FrameExtractor(max_frames=20, sampling_method='uniform')
+                frames = extractor.extract_frames(video_path)
+
+                # Run detector
+                efficientnetv2_result = self.efficientnetv2.predict_frames(
+                    frames,
+                    aggregate_method='mean'
+                )
+                results['efficientnetv2'] = efficientnetv2_result
+                logger.info(f"[Orchestrator] EfficientNetV2-B2 score: {efficientnetv2_result.get('score', 'N/A'):.4f}")
+            except Exception as e:
+                logger.error(f"[Orchestrator] EfficientNetV2-B2 failed: {e}")
+                errors['efficientnetv2'] = str(e)
 
         # 4. Calcular ensemble score
         ensemble_result = self._calculate_ensemble(results, errors)
@@ -250,6 +280,16 @@ class EnsembleOrchestrator:
                 'model': results['vit'].get('model', 'vit-v2'),
             }
 
+        # EfficientNetV2-B2 details (si disponible)
+        if 'efficientnetv2' in results:
+            detectors_detail['efficientnetv2'] = {
+                'score': round(results['efficientnetv2']['score'], 4),
+                'confidence': results['efficientnetv2'].get('confidence'),
+                'consistency': results['efficientnetv2'].get('consistency'),
+                'num_frames': results['efficientnetv2'].get('num_frames'),
+                'model': 'efficientnetv2-b2',
+            }
+
         # Decision basado en score combinado
         decision = self._make_decision(combined_score, results)
 
@@ -270,7 +310,7 @@ class EnsembleOrchestrator:
             'combined_score': round(combined_score, 4),
             'score': round(combined_score, 4),  # Retrocompatibilidad
             'decision': decision,
-            'is_likely_real': combined_score > 0.6,
+            'is_likely_real': combined_score >= 0.35,  # Ajustado para webcam
             'confidence': self._calculate_confidence(results),
 
             # Detalles individuales de cada detector
@@ -299,21 +339,21 @@ class EnsembleOrchestrator:
         """
         Toma decisión basada en score combinado
 
-        Compatible con las decisiones actuales:
-        - ALLOW: ≥80% (alta confianza)
-        - NEXT: 60-79% o 40-59% (media/baja confianza)
-        - BLOCK: <40% (riesgo alto)
-        - SUSPICIOUS_PERFECT: Métricas sospechosamente perfectas
+        AJUSTADO para videos de webcam (calidad variable):
+        - ALLOW: ≥35% (videos reales de webcam típicamente 0.35-0.50)
+        - NEXT: 25-35% (revisar con más cuidado, zona gris)
+        - BLOCK: <25% (alto riesgo de deepfake)
+        - SUSPICIOUS_PERFECT: Métricas sospechosamente perfectas (>95%)
         """
         # Check for suspiciously perfect metrics (deepfake moderno)
         if self._is_suspiciously_perfect(results):
             logger.warning("[Orchestrator] Suspiciously perfect metrics detected!")
             return 'SUSPICIOUS_PERFECT'
 
-        # Score-based decision
-        if combined_score >= 0.80:
+        # Score-based decision (AJUSTADO para webcam)
+        if combined_score >= 0.35:
             return 'ALLOW'
-        elif combined_score >= 0.40:
+        elif combined_score >= 0.25:
             return 'NEXT'
         else:
             return 'BLOCK'

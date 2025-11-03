@@ -20,11 +20,14 @@ try:
     from ensemble.orchestrator import EnsembleOrchestrator
     from ensemble.efficientnet_detector import EfficientNetDetector
     from ensemble.vit_detector import ViTDetector
+    from ensemble.efficientnetv2_detector import EfficientNetV2Detector
     ENSEMBLE_AVAILABLE = True
     VIT_AVAILABLE = True
+    EFFICIENTNETV2_AVAILABLE = True
 except ImportError as e:
     ENSEMBLE_AVAILABLE = False
     VIT_AVAILABLE = False
+    EFFICIENTNETV2_AVAILABLE = False
     logging.warning(f"Ensemble not available - running in legacy mode: {e}")
 
 # [EXISTENTE] Import SyncNet wrapper
@@ -71,15 +74,25 @@ CONFIG = {
     'efficientnet_max_frames': int(os.getenv('EFFICIENTNET_MAX_FRAMES', '20')),
 
     # [NUEVO] ViT v2 configuration
-    'vit_enabled': os.getenv('VIT_ENABLED', 'true').lower() == 'true',
+    'vit_enabled': os.getenv('VIT_ENABLED', 'false').lower() == 'true',
     'vit_model_name': os.getenv('VIT_MODEL_NAME', 'prithivMLmods/Deep-Fake-Detector-v2-Model'),
     'vit_device': os.getenv('VIT_DEVICE', 'cpu'),
     'vit_max_frames': int(os.getenv('VIT_MAX_FRAMES', '20')),
 
-    # [NUEVO] Ensemble weights (updated for 3 detectors)
-    'ensemble_weight_syncnet': float(os.getenv('ENSEMBLE_WEIGHT_SYNCNET', '0.3')),
+    # [NUEVO] EfficientNetV2-B2 configuration
+    'efficientnetv2_enabled': os.getenv('EFFICIENTNETV2_ENABLED', 'true').lower() == 'true',
+    'efficientnetv2_model_path': os.getenv(
+        'EFFICIENTNETV2_MODEL_PATH',
+        str(BASE_DIR / 'models' / 'efficientnetv2' / 'model.pt')
+    ),
+    'efficientnetv2_device': os.getenv('EFFICIENTNETV2_DEVICE', 'cpu'),
+    'efficientnetv2_max_frames': int(os.getenv('EFFICIENTNETV2_MAX_FRAMES', '20')),
+
+    # [NUEVO] Ensemble weights (updated for 4 detectors)
+    'ensemble_weight_syncnet': float(os.getenv('ENSEMBLE_WEIGHT_SYNCNET', '0.0')),
     'ensemble_weight_efficientnet': float(os.getenv('ENSEMBLE_WEIGHT_EFFICIENTNET', '0.0')),
-    'ensemble_weight_vit': float(os.getenv('ENSEMBLE_WEIGHT_VIT', '0.7')),
+    'ensemble_weight_vit': float(os.getenv('ENSEMBLE_WEIGHT_VIT', '0.0')),
+    'ensemble_weight_efficientnetv2': float(os.getenv('ENSEMBLE_WEIGHT_EFFICIENTNETV2', '1.0')),
 }
 
 # [NUEVO] Initialize Ensemble Orchestrator (lazy loading)
@@ -128,15 +141,30 @@ def get_ensemble():
             else:
                 logger.info("[App] ViT v2 disabled or not available ✗")
 
-            # Create orchestrator with all 3 detectors
+            # Initialize EfficientNetV2-B2 (if enabled)
+            efficientnetv2 = None
+            if CONFIG['efficientnetv2_enabled'] and EFFICIENTNETV2_AVAILABLE:
+                logger.info("[App] Initializing EfficientNetV2-B2 (downloading pretrained model if needed)...")
+                efficientnetv2 = EfficientNetV2Detector(
+                    model_path=CONFIG['efficientnetv2_model_path'],
+                    device=CONFIG['efficientnetv2_device'],
+                    use_pretrained=True  # Use ImageNet pretrained if no fine-tuned model
+                )
+                logger.info("[App] EfficientNetV2-B2 initialized ✓")
+            else:
+                logger.info("[App] EfficientNetV2-B2 disabled or not available ✗")
+
+            # Create orchestrator with all 4 detectors
             ensemble_orchestrator = EnsembleOrchestrator(
                 syncnet_wrapper=syncnet,
                 efficientnet_detector=efficientnet,
                 vit_detector=vit,
+                efficientnetv2_detector=efficientnetv2,
                 weights={
                     'syncnet': CONFIG['ensemble_weight_syncnet'],
                     'efficientnet': CONFIG['ensemble_weight_efficientnet'],
-                    'vit': CONFIG['ensemble_weight_vit']
+                    'vit': CONFIG['ensemble_weight_vit'],
+                    'efficientnetv2': CONFIG['ensemble_weight_efficientnetv2']
                 }
             )
 
@@ -157,13 +185,13 @@ def health():
     return jsonify({
         'status': 'healthy',
         'service': 'deepfake-detection-ensemble',
-        'version': '3.0.0',  # [ACTUALIZADO] Versión - Added ViT v2
+        'version': '4.0.0',  # [ACTUALIZADO] Versión - Added EfficientNetV2-B2
         'detectors': {
             'syncnet': {
                 'enabled': CONFIG['syncnet_enabled'],
                 'available': SYNCNET_AVAILABLE and CONFIG['syncnet_enabled']
             },
-            'efficientnet': {
+            'efficientnet_b0': {
                 'enabled': CONFIG['efficientnet_enabled'],
                 'available': CONFIG['efficientnet_enabled'] and ENSEMBLE_AVAILABLE
             },
@@ -171,6 +199,11 @@ def health():
                 'enabled': CONFIG['vit_enabled'],
                 'available': CONFIG['vit_enabled'] and VIT_AVAILABLE,
                 'model': CONFIG['vit_model_name']
+            },
+            'efficientnetv2_b2': {
+                'enabled': CONFIG['efficientnetv2_enabled'],
+                'available': CONFIG['efficientnetv2_enabled'] and EFFICIENTNETV2_AVAILABLE,
+                'model': 'tf_efficientnetv2_b2'
             }
         },
         'ensemble_available': ensemble is not None,

@@ -36,7 +36,7 @@ export const ConsentBanner = ({ onActivateVoice, onUseChatOnly, onDismiss }: Con
               ¿Te doy la bienvenida por voz?
             </h3>
             <p className="text-xs md:text-sm text-muted-foreground max-w-md leading-relaxed">
-              Activa el micrófono para hablar directamente con Dani, tu asistente virtual de soporte técnico, o continúa solo con chat de texto
+              Activa el micrófono para hablar directamente con Kike, tu asistente de seguridad de Fasecolda, o continúa solo con chat de texto
             </p>
           </div>
 

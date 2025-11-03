@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Headphones, HelpCircle } from "lucide-react";
 import Orb from "@/components/3d-orb";
 import { ConsentBanner } from "@/components/ConsentBanner";
 import { ChatBox } from "@/components/ChatBox";
-import { ChipButton } from "@/components/ChipButton";
 import AVSyncChallengeModal from "@/components/AVSyncChallengeModal";
 import { toast } from "sonner";
 import { useLirvana } from "@/hooks/useLirvana";
@@ -15,7 +13,6 @@ const Index = () => {
   const [showConsent, setShowConsent] = useState(true);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
   const [language, setLanguage] = useState<'es' | 'en'>('es');
   const [sessionId] = useState(() => uuidv4());
 
@@ -39,11 +36,6 @@ const Index = () => {
 
       // Connect to Lirvana system
       await lirvana.connect();
-
-      // Show options after successful connection
-      setTimeout(() => {
-        setShowOptions(true);
-      }, 2000);
 
       log('info', 'Voice activated successfully');
     } catch (error: any) {
@@ -89,24 +81,6 @@ const Index = () => {
     }
   };
 
-  // Handle option selection
-  const handleOptionClick = (option: string) => {
-    toast.success(`Seleccionaste: ${option}`);
-
-    // Send message to Lirvana if connected
-    if (lirvana.isConnected) {
-      const messages = {
-        'Compra': 'Estoy interesado en comprar paneles solares',
-        'Soporte': 'Necesito ayuda técnica con mi equipo',
-        'Otro': 'Tengo una consulta general'
-      };
-
-      const message = messages[option as keyof typeof messages] || option;
-      lirvana.sendMessage(message);
-    }
-
-    setChatOpen(true);
-  };
 
   return (
     <div className="min-h-screen bg-white overflow-hidden relative" style={{ backgroundColor: 'white' }}>
@@ -133,10 +107,10 @@ const Index = () => {
           className="text-center mb-8 md:mb-12 px-4"
         >
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-            Dani
+            Kike
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground">
-            Tu asistente inteligente de voz
+            Asistente de voz para Fasecolda
           </p>
         </motion.div>
 
@@ -171,43 +145,14 @@ const Index = () => {
             {lirvana.isListening && "🎤 Escuchando..."}
             {lirvana.isConnecting && "🔄 Conectando..."}
             {lirvana.connectionStatus === 'requesting_mic' && "🎤 Solicitando acceso al micrófono..."}
-            {lirvana.connectionStatus === 'fetching_token' && "🔑 Conectando a Dani..."}
+            {lirvana.connectionStatus === 'fetching_token' && "🔑 Conectando a Kike..."}
             {lirvana.connectionStatus === 'establishing_connection' && "🌐 Estableciendo conexión WebRTC..."}
             {lirvana.error && `❌ Error: ${lirvana.error}`}
             {lirvana.connectionStatus === 'disconnected' && !lirvana.error && "🚀 Toca el orbe para comenzar"}
           </p>
         </motion.div>
 
-        {/* Option chips */}
-        <AnimatePresence>
-          {showOptions && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="flex flex-wrap gap-3 md:gap-4 justify-center max-w-2xl px-4"
-            >
-              <ChipButton
-                icon={ShoppingCart}
-                label="Compra"
-                onClick={() => handleOptionClick("Compra")}
-                variant="primary"
-              />
-              <ChipButton
-                icon={Headphones}
-                label="Soporte"
-                onClick={() => handleOptionClick("Soporte")}
-                variant="primary"
-              />
-              <ChipButton
-                icon={HelpCircle}
-                label="Otro"
-                onClick={() => handleOptionClick("Otro")}
-                variant="secondary"
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Option chips - REMOVED as per user request */}
       </div>
 
       {/* Floating chat button (when chat is closed) - TEMPORARILY HIDDEN */}

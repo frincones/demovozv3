@@ -1,13 +1,14 @@
 /**
- * AVSyncChallengeModal Component
- * Main modal for AV-Sync deepfake detection challenge
+ * LivenessDetectionModal Component
+ * Modal for facial liveness verification challenges
+ * Based on 2025 best practices for active liveness detection
  */
 
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Info, X, Upload } from 'lucide-react';
+import { Loader2, Info, X, Upload, Eye } from 'lucide-react';
 import { useVideoCapture } from '@/hooks/useVideoCapture';
 import avSyncService, { type AVSyncScoreResponse } from '@/services/avSyncService';
 import VideoPreview from './VideoPreview';
@@ -35,12 +36,44 @@ interface AVSyncChallengeModalProps {
   sessionId: string;
 }
 
-const DEFAULT_PHRASES = [
-  'Para Paco pinta picos',
-  'Tres tristes tigres',
-  'El perro de San Roque',
-  'Pablito clavó un clavito',
-  'La gallina degollada',
+// Liveness challenges based on 2025 best practices
+const LIVENESS_CHALLENGES = [
+  {
+    id: 'blink_twice',
+    instruction: 'Parpadea 2 veces',
+    description: 'Cierra y abre los ojos dos veces de forma natural',
+    icon: '👁️',
+  },
+  {
+    id: 'turn_left',
+    instruction: 'Gira tu cabeza a la izquierda',
+    description: 'Gira tu rostro lentamente hacia la izquierda',
+    icon: '⬅️',
+  },
+  {
+    id: 'turn_right',
+    instruction: 'Gira tu cabeza a la derecha',
+    description: 'Gira tu rostro lentamente hacia la derecha',
+    icon: '➡️',
+  },
+  {
+    id: 'smile',
+    instruction: 'Sonríe',
+    description: 'Muestra una sonrisa natural',
+    icon: '😊',
+  },
+  {
+    id: 'look_up',
+    instruction: 'Mira hacia arriba',
+    description: 'Levanta tu mirada hacia arriba sin mover la cabeza',
+    icon: '⬆️',
+  },
+  {
+    id: 'nod',
+    instruction: 'Asiente con la cabeza',
+    description: 'Mueve tu cabeza arriba y abajo una vez',
+    icon: '↕️',
+  },
 ];
 
 export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
@@ -52,7 +85,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 }) => {
   // State
   const [state, setState] = useState<ChallengeState>('instructions');
-  const [phrase, setPhrase] = useState(challengePhrase || DEFAULT_PHRASES[0]);
+  const [challenge, setChallenge] = useState(LIVENESS_CHALLENGES[0]);
   const [result, setResult] = useState<AVSyncScoreResponse | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [userConsent, setUserConsent] = useState(false);
@@ -71,7 +104,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     startCapture,
     resetCapture,
   } = useVideoCapture({
-    duration: 4000, // 4 seconds
+    duration: 5000, // 5 seconds for liveness check
   });
 
   // Reset when modal opens
@@ -85,15 +118,15 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setUploadedFile(null);
       resetCapture();
 
-      // Randomize phrase
-      if (!challengePhrase) {
-        const randomPhrase = DEFAULT_PHRASES[
-          Math.floor(Math.random() * DEFAULT_PHRASES.length)
-        ];
-        setPhrase(randomPhrase);
-      }
+      // Randomize challenge for security (best practice 2025)
+      const randomChallenge = LIVENESS_CHALLENGES[
+        Math.floor(Math.random() * LIVENESS_CHALLENGES.length)
+      ];
+      setChallenge(randomChallenge);
+
+      log('info', '[LivenessDetection] Challenge selected:', randomChallenge.id);
     }
-  }, [isOpen, challengePhrase, resetCapture]);
+  }, [isOpen, resetCapture]);
 
   // Handle permissions request
   const handleRequestPermissions = async () => {
@@ -101,9 +134,9 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setState('permissions');
       await requestPermissions();
       setState('ready');
-      log('info', '[AVSyncChallenge] Permissions granted');
+      log('info', '[LivenessDetection] Permissions granted');
     } catch (error: any) {
-      log('error', '[AVSyncChallenge] Permission error:', error);
+      log('error', '[LivenessDetection] Permission error:', error);
       setState('instructions');
     }
   };
@@ -116,7 +149,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     // Validate file type
     if (!file.type.startsWith('video/')) {
       setApiError('Por favor selecciona un archivo de video válido');
-      log('error', '[AVSyncChallenge] Invalid file type:', file.type);
+      log('error', '[LivenessDetection] Invalid file type:', file.type);
       return;
     }
 
@@ -124,11 +157,11 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       setApiError(`El video no debe superar 10 MB (tamaño actual: ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
-      log('error', '[AVSyncChallenge] File too large:', file.size);
+      log('error', '[LivenessDetection] File too large:', file.size);
       return;
     }
 
-    log('info', '[AVSyncChallenge] File selected', {
+    log('info', '[LivenessDetection] File selected', {
       name: file.name,
       size: `${(file.size / 1024).toFixed(2)} KB`,
       type: file.type,
@@ -145,9 +178,9 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setState('countdown');
       await startCapture();
       setState('recording');
-      log('info', '[AVSyncChallenge] Recording started');
+      log('info', '[LivenessDetection] Recording started');
     } catch (error: any) {
-      log('error', '[AVSyncChallenge] Recording error:', error);
+      log('error', '[LivenessDetection] Recording error:', error);
       setState('ready');
     }
   };
@@ -176,10 +209,11 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setState('processing');
       setApiError(null);
 
-      log('info', '[AVSyncChallenge] Processing video...', {
+      log('info', '[LivenessDetection] Processing video...', {
         mode: uploadMode,
         size: videoBlob.size,
         type: videoBlob.type,
+        challenge: challenge.id,
       });
 
       const response = await avSyncService.scoreVideo({
@@ -187,14 +221,15 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
         sessionId: sessionId,
         userConsent: true,
         metadata: {
-          challengePhrase: uploadMode === 'live' ? phrase : 'archivo_cargado',
+          challengePhrase: uploadMode === 'live' ? challenge.instruction : 'archivo_cargado',
           uploadMode: uploadMode,
+          livenessChallenge: challenge.id,
           timestamp: new Date().toISOString(),
           userAgent: navigator.userAgent,
         },
       });
 
-      log('info', '[AVSyncChallenge] Analysis complete', {
+      log('info', '[LivenessDetection] Analysis complete', {
         mode: uploadMode,
         score: response.score,
         decision: response.decision,
@@ -204,7 +239,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setState('result');
 
     } catch (error: any) {
-      log('error', '[AVSyncChallenge] Processing error:', error);
+      log('error', '[LivenessDetection] Processing error:', error);
       setApiError(error.message || 'Error procesando video');
 
       // Return to appropriate state based on mode
@@ -218,6 +253,12 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     setApiError(null);
     setUploadedFile(null);
     resetCapture();
+
+    // Randomize new challenge
+    const randomChallenge = LIVENESS_CHALLENGES[
+      Math.floor(Math.random() * LIVENESS_CHALLENGES.length)
+    ];
+    setChallenge(randomChallenge);
 
     // Return to appropriate state based on mode
     if (uploadMode === 'live') {
@@ -249,7 +290,10 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       <DialogContent className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader className="sticky top-0 bg-white z-10 pb-4">
           <DialogTitle className="flex items-center justify-between text-base sm:text-lg">
-            <span className="truncate">Verificación de Identidad</span>
+            <div className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-blue-600" />
+              <span className="truncate">Verificación de Liveness</span>
+            </div>
             {state !== 'recording' && state !== 'processing' && (
               <Button
                 variant="ghost"
@@ -270,15 +314,15 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
               <Alert>
                 <Info className="h-4 w-4" />
                 <AlertDescription>
-                  Para verificar tu identidad, analizaremos un video con sincronización audio-visual.
-                  Puedes grabarlo en vivo o subir un archivo pregrabado.
+                  Para verificar que eres una persona real y no un deepfake, realizaremos una prueba de
+                  detección de vida (liveness) mediante movimientos faciales naturales.
                 </AlertDescription>
               </Alert>
 
               {/* Mode selector */}
               <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <h3 className="font-semibold text-gray-900">
-                  ¿Cómo deseas verificar tu identidad?
+                  ¿Cómo deseas realizar la verificación?
                 </h3>
 
                 <div className="space-y-2">
@@ -293,9 +337,9 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                       className="mt-1"
                     />
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900">Grabar video en vivo</div>
+                      <div className="font-medium text-gray-900">Verificación en vivo (Recomendado)</div>
                       <div className="text-sm text-gray-600">
-                        Graba un video de 4 segundos usando tu cámara y micrófono
+                        Graba un video de 5 segundos realizando un movimiento facial
                       </div>
                     </div>
                   </label>
@@ -320,35 +364,43 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                 </div>
               </div>
 
-              {/* Instructions based on selected mode */}
+              {/* Challenge instruction */}
               {uploadMode === 'live' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-blue-900 mb-2">
-                    Frase a repetir:
-                  </h3>
-                  <p className="text-2xl font-bold text-blue-700 text-center py-4">
-                    "{phrase}"
-                  </p>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg p-6">
+                  <div className="text-center space-y-3">
+                    <div className="text-5xl">{challenge.icon}</div>
+                    <h3 className="font-bold text-blue-900 text-xl">
+                      Tu desafío:
+                    </h3>
+                    <p className="text-3xl font-bold text-indigo-700">
+                      {challenge.instruction}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      {challenge.description}
+                    </p>
+                  </div>
                 </div>
               )}
 
               <div className="bg-gray-50 rounded-lg p-4 space-y-2 text-sm text-gray-700">
-                <h4 className="font-semibold text-gray-900">
-                  {uploadMode === 'live' ? 'Instrucciones para grabación:' : 'Requisitos del video:'}
+                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Info className="h-4 w-4" />
+                  {uploadMode === 'live' ? 'Consejos para la verificación:' : 'Requisitos del video:'}
                 </h4>
-                <ul className="list-disc list-inside space-y-1">
+                <ul className="list-disc list-inside space-y-1 ml-4">
                   {uploadMode === 'live' ? (
                     <>
                       <li>Asegúrate de estar en un lugar bien iluminado</li>
                       <li>Posiciona tu rostro frente a la cámara</li>
-                      <li>Habla claramente la frase completa</li>
-                      <li>El video se grabará automáticamente durante 4 segundos</li>
+                      <li>Realiza el movimiento de forma natural y clara</li>
+                      <li>El video se grabará automáticamente durante 5 segundos</li>
+                      <li>No uses fotos, videos pregrabados o máscaras</li>
                     </>
                   ) : (
                     <>
-                      <li>El video debe mostrar tu rostro claramente hablando</li>
-                      <li>Duración mínima: 4 segundos</li>
-                      <li>Buena iluminación y calidad de audio</li>
+                      <li>El video debe mostrar tu rostro claramente</li>
+                      <li>Duración mínima: 5 segundos</li>
+                      <li>Buena iluminación y calidad</li>
                       <li>Formatos aceptados: MP4, WebM, AVI, MOV (máx. 10 MB)</li>
                     </>
                   )}
@@ -364,8 +416,8 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                   className="mt-1"
                 />
                 <label htmlFor="consent" className="text-sm text-gray-700 cursor-pointer">
-                  Acepto que se procese mi video para verificación de identidad.
-                  El video se eliminará automáticamente después del análisis.
+                  Acepto que se procese mi video para verificación de liveness.
+                  El video se eliminará automáticamente después del análisis y no será almacenado.
                 </label>
               </div>
 
@@ -378,9 +430,9 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                   }
                 }}
                 disabled={!userConsent}
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700"
               >
-                {uploadMode === 'live' ? 'Comenzar Grabación' : 'Seleccionar Video'}
+                {uploadMode === 'live' ? 'Iniciar Verificación' : 'Seleccionar Video'}
               </Button>
             </div>
           )}
@@ -389,7 +441,8 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
           {state === 'permissions' && (
             <div className="text-center py-8">
               <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-600 mb-4" />
-              <p className="text-gray-700">Solicitando permisos de cámara y micrófono...</p>
+              <p className="text-gray-700">Solicitando permisos de cámara...</p>
+              <p className="text-sm text-gray-500 mt-2">Por favor, permite el acceso a tu cámara para continuar</p>
             </div>
           )}
 
@@ -402,12 +455,19 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                 countdown={null}
               />
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-center text-blue-900">
-                  Cuando estés listo, presiona el botón para comenzar la grabación.
-                  <br />
-                  <span className="font-semibold">Recuerda decir: "{phrase}"</span>
-                </p>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-lg p-6">
+                <div className="text-center space-y-3">
+                  <div className="text-5xl">{challenge.icon}</div>
+                  <p className="text-gray-800">
+                    Cuando estés listo, presiona el botón para comenzar la grabación.
+                  </p>
+                  <p className="font-bold text-xl text-indigo-700">
+                    Recuerda: {challenge.instruction}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {challenge.description}
+                  </p>
+                </div>
               </div>
 
               {captureError && (
@@ -424,7 +484,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 
               <Button
                 onClick={handleStartRecording}
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700"
                 disabled={!hasPermissions}
               >
                 Iniciar Grabación
@@ -441,13 +501,16 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
                 countdown={countdown}
               />
 
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-center text-green-900 font-semibold">
-                  {countdown !== null
-                    ? 'Prepárate...'
-                    : `Di ahora: "${phrase}"`
-                  }
-                </p>
+              <div className="bg-green-50 border-2 border-green-400 rounded-lg p-6">
+                <div className="text-center space-y-2">
+                  <div className="text-5xl animate-bounce">{challenge.icon}</div>
+                  <p className="text-center text-green-900 font-bold text-xl">
+                    {countdown !== null
+                      ? 'Prepárate...'
+                      : `¡Ahora! ${challenge.instruction}`
+                    }
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -540,7 +603,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 
                 <Button
                   onClick={handleProcessVideo}
-                  className="flex-1"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
                 >
                   Analizar Video
                 </Button>
@@ -554,9 +617,12 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
               <Loader2 className="w-16 h-16 animate-spin mx-auto text-blue-600" />
               <div>
                 <p className="text-lg font-semibold text-gray-900 mb-2">
-                  Analizando sincronía audio-visual...
+                  Analizando verificación de liveness...
                 </p>
                 <p className="text-sm text-gray-600">
+                  Verificando que eres una persona real
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
                   Esto puede tardar unos segundos
                 </p>
               </div>
@@ -570,8 +636,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
               onRetry={handleRetry}
               onContinue={handleContinue}
               onAlternativeAuth={() => {
-                // TODO: Implement alternative auth methods
-                log('info', '[AVSyncChallenge] Alternative auth requested');
+                log('info', '[LivenessDetection] Alternative auth requested');
               }}
             />
           )}
