@@ -11,6 +11,9 @@ interface VideoPreviewProps {
   isRecording: boolean;
   countdown: number | null;
   onPermissionDenied?: () => void;
+  videoRef?: React.RefObject<HTMLVideoElement>; // Optional external ref for MediaPipe
+  mediaPipeStatus?: string; // Optional MediaPipe detection status
+  mediaPipeProgress?: number; // Optional MediaPipe progress (0-100)
 }
 
 export const VideoPreview: React.FC<VideoPreviewProps> = ({
@@ -18,8 +21,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   isRecording,
   countdown,
   onPermissionDenied,
+  videoRef: externalVideoRef,
+  mediaPipeStatus,
+  mediaPipeProgress = 0,
 }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = externalVideoRef || internalVideoRef;
 
   // Attach stream to video element
   useEffect(() => {
@@ -72,6 +79,31 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       {stream && !isRecording && countdown === null && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-64 h-64 border-2 border-white/50 rounded-full" />
+        </div>
+      )}
+
+      {/* MediaPipe detection status overlay */}
+      {mediaPipeStatus && isRecording && countdown === null && (
+        <div className="absolute bottom-4 left-0 right-0 px-4">
+          <div className="bg-black/80 backdrop-blur-sm rounded-lg p-4 space-y-2">
+            {/* Status text */}
+            <div className="text-white text-center font-medium">
+              {mediaPipeStatus}
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-300 ease-out"
+                style={{ width: `${mediaPipeProgress}%` }}
+              />
+            </div>
+
+            {/* Progress percentage */}
+            <div className="text-xs text-center text-gray-300">
+              {Math.round(mediaPipeProgress)}% completado
+            </div>
+          </div>
         </div>
       )}
     </div>
