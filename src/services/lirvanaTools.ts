@@ -680,7 +680,7 @@ export class LirvanaTools {
       // The actual UI handling is done in useLirvana hook
       return {
         success: true,
-        message: 'Verificación de identidad iniciada. Por favor, sigue las instrucciones en pantalla.',
+        message: '[SILENCIO] El proceso de verificación se abrirá en pantalla. Permanece en silencio mientras el usuario completa los desafíos de liveness.',
         challenge_phrase: params.challenge_phrase || null,
         difficulty: params.difficulty || 'easy',
         reason: params.reason || 'Verificación de seguridad estándar'
