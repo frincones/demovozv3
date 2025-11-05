@@ -19,6 +19,7 @@ interface UseWebRTCReturn {
   error: string | null;
   clearError: () => void;
   sendTextMessage: (message: string) => void;
+  cancelResponse: () => void;
   currentTranscript: string;
 }
 
@@ -652,6 +653,26 @@ export default function useWebRTC(
   }, [isSessionActive]);
 
   /**
+   * Cancel any ongoing response from the agent (interrupts speech immediately)
+   */
+  const cancelResponse = useCallback(() => {
+    if (!dataChannelRef.current || !isSessionActive) {
+      console.warn('[WEBRTC] Cannot cancel response: not connected');
+      return;
+    }
+
+    try {
+      const cancelEvent = {
+        type: "response.cancel"
+      };
+      console.log('[WEBRTC] 🔇 Canceling agent response');
+      dataChannelRef.current.send(JSON.stringify(cancelEvent));
+    } catch (error) {
+      console.error('[WEBRTC] Error canceling response:', error);
+    }
+  }, [isSessionActive]);
+
+  /**
    * Clear error state
    */
   const clearError = useCallback(() => {
@@ -678,6 +699,7 @@ export default function useWebRTC(
     error,
     clearError,
     sendTextMessage,
+    cancelResponse,
     currentTranscript,
   };
 }

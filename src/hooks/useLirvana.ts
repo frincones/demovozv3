@@ -173,6 +173,10 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
               console.log('🎯 Setting challenge phrase:', result.challenge_phrase);
               console.log('🎯 Opening modal - setting isChallengeActive to TRUE');
 
+              // CRITICAL: Cancel any ongoing agent response immediately to silence the agent
+              webrtc.cancelResponse();
+              console.log('🔇 Agent response canceled - forcing silence');
+
               setChallengePhrase(result.challenge_phrase);
               setIsChallengeActive(true);
 
@@ -447,6 +451,8 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
       case 'ready':
         // Only notify when starting the first challenge
         if (challengeInfo && challengeInfo.index === 0) {
+          // Cancel any ongoing response before sending silence message
+          webrtc.cancelResponse();
           message = 'SYSTEM: El usuario va a iniciar el proceso de validación de identidad. Mantente en silencio mientras completa los desafíos.';
           console.log('[ModalStateChange] READY state detected for first challenge');
         } else {
