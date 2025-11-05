@@ -159,9 +159,9 @@ Si el usuario pregunta:
         ],
         turn_detection: {
           type: 'server_vad',
-          threshold: 0.6,           // Increased from 0.5 to reduce false positives
-          prefix_padding_ms: 300,
-          silence_duration_ms: 800  // Increased from 500ms to give user more time
+          threshold: 0.75,           // High threshold to ignore background noise/music (0.5=sensitive, 1.0=very strict)
+          prefix_padding_ms: 500,    // Capture more audio before speech starts
+          silence_duration_ms: 1500  // Wait longer before considering user finished (reduces interruptions)
         },
         input_audio_format: 'pcm16',
         output_audio_format: 'pcm16',

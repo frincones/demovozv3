@@ -454,15 +454,11 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
         }
         break;
       case 'challenge_passed':
-        // Only notify when ALL challenges are completed
-        message = 'SYSTEM: El usuario completó exitosamente todos los desafíos de validación. Procesando resultados finales...';
-        console.log('[ModalStateChange] CHALLENGE_PASSED state detected');
-        break;
       case 'success':
-        // Final success - this will be followed by handleChallengeComplete
-        message = 'SYSTEM: Verificación completada. El usuario ha sido validado como persona real.';
-        console.log('[ModalStateChange] SUCCESS state detected');
-        break;
+        // REMOVED: These states are now handled only in handleChallengeComplete
+        // to avoid duplicate messages that cause the agent to loop
+        console.log('[ModalStateChange] Ignoring state (handled by handleChallengeComplete):', state);
+        return;
       default:
         console.log('[ModalStateChange] Ignoring state:', state);
         return; // Don't send message for other states
