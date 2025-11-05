@@ -404,21 +404,28 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     log('info', 'AV-Sync challenge completed', result);
     setIsChallengeActive(false);
 
-    // Handle decision
-    if (result.decision === 'ALLOW') {
-      // Early-exit: user verified
-      log('info', 'User verified successfully (early-exit)');
-      // Continue conversation normally
-    } else if (result.decision === 'NEXT') {
-      // Additional challenge required
-      log('warn', 'Additional verification required');
-      // TODO: Trigger next challenge (e.g., light/shadow test)
-    } else {
-      // BLOCK: high risk
-      log('error', 'High risk detected - user verification failed');
-      // TODO: Implement alternative auth or block
+    // Send feedback to the agent about verification result
+    if (webrtc.isSessionActive) {
+      let feedbackMessage = '';
+
+      if (result.decision === 'ALLOW') {
+        // Early-exit: user verified
+        log('info', 'User verified successfully (early-exit)');
+        feedbackMessage = 'SYSTEM: El usuario ha completado exitosamente la verificación de identidad. Todas las validaciones de liveness pasaron correctamente. Felicita al usuario y pregunta si desea realizar otra verificación o si hay algo más en lo que puedas ayudar.';
+      } else if (result.decision === 'NEXT') {
+        // Additional challenge required
+        log('warn', 'Additional verification required');
+        feedbackMessage = 'SYSTEM: La primera verificación requiere validación adicional. El sistema necesita una segunda ronda de verificación para mayor seguridad.';
+      } else {
+        // BLOCK: high risk
+        log('error', 'High risk detected - user verification failed');
+        feedbackMessage = 'SYSTEM: La verificación no fue exitosa. Se detectó un alto riesgo de manipulación digital. Informa al usuario con empatía y ofrece asistencia alternativa.';
+      }
+
+      // Send the feedback as a text message to the agent
+      webrtc.sendTextMessage(feedbackMessage);
     }
-  }, []);
+  }, [webrtc]);
 
   const handleChallengeClose = useCallback(() => {
     log('info', 'AV-Sync challenge closed');
