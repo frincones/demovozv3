@@ -199,9 +199,21 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     }
   }, [stream, state]);
 
-  // Notify agent of state changes
+  // Notify agent of state changes - ONLY for key moments
   useEffect(() => {
-    if (onStateChange && currentChallenge) {
+    if (!onStateChange || !currentChallenge) return;
+
+    // Only notify in critical states to avoid repetition:
+    // 1. 'ready' - Only for first challenge (index 0)
+    // 2. 'challenge_passed' - Only when completing the LAST challenge
+    // 3. 'success' - Final success state
+
+    const shouldNotify =
+      (state === 'ready' && currentChallengeIndex === 0) ||
+      (state === 'challenge_passed' && completedChallenges >= 2) ||
+      state === 'success';
+
+    if (shouldNotify) {
       onStateChange(state, {
         index: currentChallengeIndex,
         total: challenges.length,
@@ -209,7 +221,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       });
       log('info', '[LivenessDetection] State changed, notifying agent:', state);
     }
-  }, [state, currentChallengeIndex, onStateChange]);
+  }, [state, currentChallengeIndex, completedChallenges, onStateChange]);
 
   // Handle permissions request
   const handleRequestPermissions = async () => {

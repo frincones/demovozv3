@@ -439,37 +439,22 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
 
     let message = '';
     switch(state) {
-      case 'instructions':
-        message = 'SYSTEM: La modal de verificación se abrió. El usuario está viendo las instrucciones iniciales.';
-        break;
-      case 'permissions':
-        message = 'SYSTEM: El usuario está concediendo permisos de cámara.';
-        break;
       case 'ready':
-        if (challengeInfo) {
-          message = `SYSTEM: El usuario está listo para iniciar el desafío ${challengeInfo.index + 1} de ${challengeInfo.total}: "${challengeInfo.instruction}". Dile que presione "Iniciar" cuando esté listo.`;
-        }
-        break;
-      case 'detecting':
-        if (challengeInfo) {
-          message = `SYSTEM: El usuario está realizando el desafío ${challengeInfo.index + 1} de ${challengeInfo.total}: "${challengeInfo.instruction}". Está en progreso.`;
+        // Only notify when starting the first challenge
+        if (challengeInfo && challengeInfo.index === 0) {
+          message = 'SYSTEM: El usuario va a iniciar el proceso de validación de identidad. Mantente en silencio mientras completa los desafíos.';
         }
         break;
       case 'challenge_passed':
-        if (challengeInfo) {
-          const isLastChallenge = challengeInfo.index >= challengeInfo.total - 1;
-          if (isLastChallenge) {
-            message = `SYSTEM: ¡El usuario completó exitosamente el desafío ${challengeInfo.index + 1}! Todas las validaciones completadas. El sistema está procesando los resultados finales.`;
-          } else {
-            message = `SYSTEM: ¡El usuario completó exitosamente el desafío ${challengeInfo.index + 1}! Preparando el siguiente desafío.`;
-          }
-        }
+        // Only notify when ALL challenges are completed
+        message = 'SYSTEM: El usuario completó exitosamente todos los desafíos de validación. Procesando resultados finales...';
         break;
       case 'success':
-        message = 'SYSTEM: Verificación completada exitosamente. El usuario ha sido validado como persona real.';
+        // Final success - this will be followed by handleChallengeComplete
+        message = 'SYSTEM: Verificación completada. El usuario ha sido validado como persona real.';
         break;
       default:
-        return; // Don't send message for unknown states
+        return; // Don't send message for other states
     }
 
     if (message) {
