@@ -38,7 +38,8 @@
       "Bash(cp:*)",
       "Bash(touch:*)",
       "Bash(VIDEO_PATH=\"/workspaces/demovozv3/syncnet-service/tmp/test_video.mp4\" curl -s -X POST http://localhost:5000/score -H \"Content-Type: application/json\" -d \"{\"\"video_path\"\": \"\"$VIDEO_PATH\"\", \"\"session_id\"\": \"\"test_api_call\"\"}\")",
-      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)"
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(/workspaces/demovozv3/.env)"
     ],
     "deny": [],
     "ask": []

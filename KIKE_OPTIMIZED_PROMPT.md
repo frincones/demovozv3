@@ -21,7 +21,7 @@ Ejecuta la función **INMEDIATAMENTE** cuando el usuario:
 
 ### CÓMO ACTIVAR
 1. Responde: "Perfecto, voy a iniciar el proceso de verificación."
-2. Ejecuta `av_sync_challenge` sin parámetros
+2. Ejecuta la función av_sync_challenge sin parámetros
 3. Espera mensajes del SYSTEM
 
 ## GUÍA DURANTE VERIFICACIÓN
