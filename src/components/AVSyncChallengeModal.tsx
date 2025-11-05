@@ -201,7 +201,12 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 
   // Notify agent of state changes - ONLY for key moments
   useEffect(() => {
-    if (!onStateChange || !currentChallenge) return;
+    console.log('[LivenessDetection] State effect triggered - State:', state, 'ChallengeIndex:', currentChallengeIndex, 'CompletedChallenges:', completedChallenges);
+
+    if (!onStateChange || !currentChallenge) {
+      console.log('[LivenessDetection] No onStateChange or currentChallenge, skipping');
+      return;
+    }
 
     // Only notify in critical states to avoid repetition:
     // 1. 'ready' - Only for first challenge (index 0)
@@ -213,13 +218,22 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       (state === 'challenge_passed' && completedChallenges >= 2) ||
       state === 'success';
 
+    console.log('[LivenessDetection] ShouldNotify:', shouldNotify, 'Conditions:', {
+      readyAndFirstChallenge: state === 'ready' && currentChallengeIndex === 0,
+      challengePassedAndAllComplete: state === 'challenge_passed' && completedChallenges >= 2,
+      isSuccess: state === 'success'
+    });
+
     if (shouldNotify) {
+      console.log('[LivenessDetection] 🔔 Notifying agent - State:', state);
       onStateChange(state, {
         index: currentChallengeIndex,
         total: challenges.length,
         instruction: currentChallenge.instruction
       });
       log('info', '[LivenessDetection] State changed, notifying agent:', state);
+    } else {
+      console.log('[LivenessDetection] Not notifying agent for state:', state);
     }
   }, [state, currentChallengeIndex, completedChallenges, onStateChange]);
 

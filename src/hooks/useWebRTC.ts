@@ -286,6 +286,71 @@ export default function useWebRTC(
           break;
         }
 
+        /**
+         * Handle error messages from server
+         */
+        case "error": {
+          console.warn("[WEBRTC] Server error:", msg.error);
+          // Don't set error state for minor server errors, just log them
+          break;
+        }
+
+        /**
+         * Handle conversation.item.created (info only)
+         */
+        case "conversation.item.created": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
+        /**
+         * Handle rate_limits.updated (info only)
+         */
+        case "rate_limits.updated": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
+        /**
+         * Handle output_audio_buffer.stopped (info only)
+         */
+        case "output_audio_buffer.stopped": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
+        /**
+         * Handle response.audio.done (info only)
+         */
+        case "response.audio.done": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
+        /**
+         * Handle response.content_part.done (info only)
+         */
+        case "response.content_part.done": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
+        /**
+         * Handle response.output_item.done (info only)
+         */
+        case "response.output_item.done": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
+        /**
+         * Handle response.done (info only)
+         */
+        case "response.done": {
+          // Just acknowledge, no action needed
+          break;
+        }
+
         default: {
           console.log("[WEBRTC] Unhandled message type:", msg.type);
           break;

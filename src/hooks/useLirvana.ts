@@ -435,7 +435,12 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
   }, []);
 
   const handleModalStateChange = useCallback((state: string, challengeInfo?: {index: number, total: number, instruction: string}) => {
-    if (!webrtc.isSessionActive) return;
+    console.log('[ModalStateChange] State:', state, 'ChallengeInfo:', challengeInfo, 'SessionActive:', webrtc.isSessionActive);
+
+    if (!webrtc.isSessionActive) {
+      console.warn('[ModalStateChange] Session not active, skipping notification');
+      return;
+    }
 
     let message = '';
     switch(state) {
@@ -443,23 +448,31 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
         // Only notify when starting the first challenge
         if (challengeInfo && challengeInfo.index === 0) {
           message = 'SYSTEM: El usuario va a iniciar el proceso de validación de identidad. Mantente en silencio mientras completa los desafíos.';
+          console.log('[ModalStateChange] READY state detected for first challenge');
+        } else {
+          console.log('[ModalStateChange] READY state but NOT first challenge, skipping');
         }
         break;
       case 'challenge_passed':
         // Only notify when ALL challenges are completed
         message = 'SYSTEM: El usuario completó exitosamente todos los desafíos de validación. Procesando resultados finales...';
+        console.log('[ModalStateChange] CHALLENGE_PASSED state detected');
         break;
       case 'success':
         // Final success - this will be followed by handleChallengeComplete
         message = 'SYSTEM: Verificación completada. El usuario ha sido validado como persona real.';
+        console.log('[ModalStateChange] SUCCESS state detected');
         break;
       default:
+        console.log('[ModalStateChange] Ignoring state:', state);
         return; // Don't send message for other states
     }
 
     if (message) {
-      log('info', '[ModalStateChange] Sending to agent:', message);
+      console.log('[ModalStateChange] 📤 Sending to agent:', message);
       webrtc.sendTextMessage(message);
+    } else {
+      console.log('[ModalStateChange] No message to send for this state');
     }
   }, [webrtc]);
 
