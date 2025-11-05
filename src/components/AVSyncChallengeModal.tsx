@@ -28,7 +28,7 @@ interface AVSyncChallengeModalProps {
   sessionId: string;
 }
 
-// Liveness challenges based on 2025 best practices
+// Liveness challenges - Only 4 active challenges for optimal UX
 const LIVENESS_CHALLENGES = [
   {
     id: 'blink_twice',
@@ -53,18 +53,6 @@ const LIVENESS_CHALLENGES = [
     instruction: 'Sonríe',
     description: 'Muestra una sonrisa natural',
     icon: '😊',
-  },
-  {
-    id: 'look_up',
-    instruction: 'Mira hacia arriba',
-    description: 'Levanta tu mirada hacia arriba',
-    icon: '⬆️',
-  },
-  {
-    id: 'nod',
-    instruction: 'Asiente con la cabeza',
-    description: 'Mueve tu cabeza arriba y abajo una vez',
-    icon: '↕️',
   },
 ];
 
@@ -141,9 +129,10 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
     }
   }
 
-  // Reset when modal opens
+  // Reset when modal opens or closes
   useEffect(() => {
     if (isOpen) {
+      // Reset state when opening
       setState('instructions');
       setUserConsent(false);
       setMediaPipeProgress(0);
@@ -163,6 +152,28 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       setChallenges(selected);
 
       log('info', '[LivenessDetection] Challenges selected:', selected.map(c => c.id));
+    } else {
+      // Complete cleanup when closing
+      if (stream) {
+        log('info', '[LivenessDetection] Cleaning up stream on modal close');
+        stream.getTracks().forEach(track => track.stop());
+        setStream(null);
+      }
+
+      // Clean video element
+      if (videoElementRef.current) {
+        videoElementRef.current.srcObject = null;
+        videoElementRef.current.pause();
+      }
+
+      // Reset all state
+      setState('instructions');
+      setUserConsent(false);
+      setMediaPipeProgress(0);
+      setCurrentChallengeIndex(0);
+      setCompletedChallenges(0);
+      setHasPermissions(false);
+      setCaptureError(null);
     }
   }, [isOpen]);
 
@@ -213,11 +224,23 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
 
   // Handle close
   const handleClose = () => {
-    // Don't allow closing during active detection
-    if (state === 'detecting') return;
+    // Don't allow closing during active detection (prevents accidental closes)
+    if (state === 'detecting' || state === 'challenge_passed') return;
+
+    // Stop stream if active
     if (stream) {
+      log('info', '[LivenessDetection] Stopping stream on close');
       stream.getTracks().forEach(track => track.stop());
+      setStream(null);
     }
+
+    // Clean video element
+    if (videoElementRef.current) {
+      videoElementRef.current.srcObject = null;
+      videoElementRef.current.pause();
+    }
+
+    // Notify parent to close
     onClose();
   };
 

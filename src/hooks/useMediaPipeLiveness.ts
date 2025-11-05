@@ -43,14 +43,15 @@ const RIGHT_EYE_INDICES = {
   bottom: 145,
 };
 
-// Thresholds for detection - EXTREME SENSITIVITY (almost always passes)
+// Thresholds for detection - OPTIMIZED for fast and consistent detection
 const THRESHOLDS = {
-  EAR_BLINK: 0.22, // Eye Aspect Ratio threshold for blink detection (higher = easier)
-  HEAD_TURN_LEFT: -0.01, // Rotation threshold for left turn (EXTREME - minimal movement)
-  HEAD_TURN_RIGHT: 0.01, // Rotation threshold for right turn (EXTREME - minimal movement)
-  HEAD_LOOK_UP: -0.01, // Pitch threshold for looking up (EXTREME - minimal movement)
-  HEAD_NOD_DOWN: 0.01, // Pitch threshold for nodding down (EXTREME - minimal movement)
-  SMILE: 0.08, // Smile intensity threshold (EXTREME - barely smile)
+  EAR_BLINK: 0.22, // Eye Aspect Ratio threshold for blink detection (WORKS GREAT - KEEP THIS!)
+  HEAD_TURN_LEFT: -0.03, // Rotation threshold for left turn (less sensitive - requires clearer movement)
+  HEAD_TURN_RIGHT: 0.03, // Rotation threshold for right turn (less sensitive - requires clearer movement)
+  HEAD_LOOK_UP: -0.025, // Pitch threshold for looking up (less sensitive - requires clearer movement)
+  HEAD_NOD_DOWN: 0.02, // Pitch threshold for nodding down (phase 1: tilt head down)
+  HEAD_NOD_UP: -0.01, // Pitch threshold for nodding up (phase 2: return head to neutral/up position)
+  SMILE: 0.15, // Smile intensity threshold (INCREASED from 0.08 for faster detection like blink)
 };
 
 export const useMediaPipeLiveness = ({
@@ -345,14 +346,21 @@ export const useMediaPipeLiveness = ({
       case 'nod': {
         const { pitch } = estimateHeadRotation(landmarks);
 
+        // Always log to debug
+        log('info', `[MediaPipe] nod - pitch: ${pitch.toFixed(4)}, phase: ${nodStartedRef.current ? '2 (up)' : '1 (down)'}, down_threshold: ${THRESHOLDS.HEAD_NOD_DOWN}, up_threshold: ${THRESHOLDS.HEAD_NOD_UP}`);
+
         // Two-phase detection: down then up
         if (!nodStartedRef.current && pitch > THRESHOLDS.HEAD_NOD_DOWN) {
+          // Phase 1 completed: head tilted down
           nodStartedRef.current = true;
-          setDetectionStatus('Ahora levanta la cabeza...');
+          log('info', `[MediaPipe] ✅ nod PHASE 1 completed (head down) with pitch: ${pitch.toFixed(4)}`);
+          setDetectionStatus('¡Bien! Ahora levanta la cabeza');
           setProgress(50);
           onProgress?.(50);
-        } else if (nodStartedRef.current && pitch < 0 && !nodCompletedRef.current) {
+        } else if (nodStartedRef.current && pitch < THRESHOLDS.HEAD_NOD_UP && !nodCompletedRef.current) {
+          // Phase 2 completed: head returned to neutral/up
           nodCompletedRef.current = true;
+          log('info', `[MediaPipe] ✅ nod PHASE 2 completed (head up) with pitch: ${pitch.toFixed(4)}`);
           setDetectionStatus('✅ ¡Perfecto!');
           setProgress(100);
           onProgress?.(100);
@@ -360,10 +368,17 @@ export const useMediaPipeLiveness = ({
             onChallengeComplete?.();
           }, 300);
         } else if (!nodStartedRef.current) {
+          // Still waiting for phase 1
           setDetectionStatus('Baja la cabeza (asiente)');
           const currentProgress = Math.min((pitch / THRESHOLDS.HEAD_NOD_DOWN) * 100, 45);
           setProgress(currentProgress);
           onProgress?.(currentProgress);
+        } else if (nodStartedRef.current && !nodCompletedRef.current) {
+          // Waiting for phase 2
+          setDetectionStatus('Ahora levanta la cabeza');
+          const upProgress = Math.min(50 + Math.abs(pitch / THRESHOLDS.HEAD_NOD_UP) * 50, 90);
+          setProgress(upProgress);
+          onProgress?.(upProgress);
         }
         break;
       }
@@ -450,6 +465,7 @@ export const useMediaPipeLiveness = ({
     lookUpDetectedRef.current = false;
     nodStartedRef.current = false;
     nodCompletedRef.current = false;
+    lastVideoTimeRef.current = -1; // Reset video time tracking
     setProgress(0);
     setDetectionStatus('Listo para detectar');
   }, [stopDetection]);
@@ -482,6 +498,22 @@ export const useMediaPipeLiveness = ({
       stopDetection();
     }
   }, [enabled, isReady, videoElement, stream, isDetecting, startDetection, stopDetection]);
+
+  // Cleanup when disabled - reset everything for next use
+  useEffect(() => {
+    if (!enabled) {
+      // Reset all detection state when disabled
+      blinkCountRef.current = 0;
+      wasEyeClosedRef.current = false;
+      headTurnDetectedRef.current = false;
+      smileDetectedRef.current = false;
+      lookUpDetectedRef.current = false;
+      nodStartedRef.current = false;
+      nodCompletedRef.current = false;
+      lastVideoTimeRef.current = -1;
+      setProgress(0);
+    }
+  }, [enabled]);
 
   return {
     isReady,
