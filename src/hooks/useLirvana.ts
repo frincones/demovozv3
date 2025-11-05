@@ -63,6 +63,7 @@ interface UseLirvanaReturn {
   // AV-Sync Challenge methods (NEW)
   handleChallengeComplete: (result: any) => void;
   handleChallengeClose: () => void;
+  handleModalStateChange: (state: string, challengeInfo?: {index: number, total: number, instruction: string}) => void;
 
   // Error handling
   error: string | null;
@@ -433,6 +434,50 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     setChallengePhrase(null);
   }, []);
 
+  const handleModalStateChange = useCallback((state: string, challengeInfo?: {index: number, total: number, instruction: string}) => {
+    if (!webrtc.isSessionActive) return;
+
+    let message = '';
+    switch(state) {
+      case 'instructions':
+        message = 'SYSTEM: La modal de verificación se abrió. El usuario está viendo las instrucciones iniciales.';
+        break;
+      case 'permissions':
+        message = 'SYSTEM: El usuario está concediendo permisos de cámara.';
+        break;
+      case 'ready':
+        if (challengeInfo) {
+          message = `SYSTEM: El usuario está listo para iniciar el desafío ${challengeInfo.index + 1} de ${challengeInfo.total}: "${challengeInfo.instruction}". Dile que presione "Iniciar" cuando esté listo.`;
+        }
+        break;
+      case 'detecting':
+        if (challengeInfo) {
+          message = `SYSTEM: El usuario está realizando el desafío ${challengeInfo.index + 1} de ${challengeInfo.total}: "${challengeInfo.instruction}". Está en progreso.`;
+        }
+        break;
+      case 'challenge_passed':
+        if (challengeInfo) {
+          const isLastChallenge = challengeInfo.index >= challengeInfo.total - 1;
+          if (isLastChallenge) {
+            message = `SYSTEM: ¡El usuario completó exitosamente el desafío ${challengeInfo.index + 1}! Todas las validaciones completadas. El sistema está procesando los resultados finales.`;
+          } else {
+            message = `SYSTEM: ¡El usuario completó exitosamente el desafío ${challengeInfo.index + 1}! Preparando el siguiente desafío.`;
+          }
+        }
+        break;
+      case 'success':
+        message = 'SYSTEM: Verificación completada exitosamente. El usuario ha sido validado como persona real.';
+        break;
+      default:
+        return; // Don't send message for unknown states
+    }
+
+    if (message) {
+      log('info', '[ModalStateChange] Sending to agent:', message);
+      webrtc.sendTextMessage(message);
+    }
+  }, [webrtc]);
+
   // Error aggregation
   const aggregatedError = error || webrtc.error ||
     (audio.error ? `Audio: ${audio.error.message}` : null);
@@ -486,6 +531,7 @@ export function useLirvana(config: UseLirvanaConfig = {}): UseLirvanaReturn {
     // AV-Sync Challenge methods (NEW)
     handleChallengeComplete,
     handleChallengeClose,
+    handleModalStateChange,
 
     // Error handling
     error: aggregatedError,

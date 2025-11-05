@@ -26,6 +26,7 @@ interface AVSyncChallengeModalProps {
   onComplete: (result: any) => void;
   challengePhrase?: string;
   sessionId: string;
+  onStateChange?: (state: ChallengeState, challengeInfo?: {index: number, total: number, instruction: string}) => void;
 }
 
 // Liveness challenges - Only 4 active challenges for optimal UX
@@ -61,6 +62,7 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
   onClose,
   onComplete,
   sessionId,
+  onStateChange,
 }) => {
   // State
   const [state, setState] = useState<ChallengeState>('instructions');
@@ -196,6 +198,18 @@ export const AVSyncChallengeModal: React.FC<AVSyncChallengeModalProps> = ({
       log('info', '[LivenessDetection] Stream attached to video element, state:', state);
     }
   }, [stream, state]);
+
+  // Notify agent of state changes
+  useEffect(() => {
+    if (onStateChange && currentChallenge) {
+      onStateChange(state, {
+        index: currentChallengeIndex,
+        total: challenges.length,
+        instruction: currentChallenge.instruction
+      });
+      log('info', '[LivenessDetection] State changed, notifying agent:', state);
+    }
+  }, [state, currentChallengeIndex, onStateChange]);
 
   // Handle permissions request
   const handleRequestPermissions = async () => {

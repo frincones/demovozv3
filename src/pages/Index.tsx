@@ -215,6 +215,7 @@ const Index = () => {
         onComplete={lirvana.handleChallengeComplete}
         challengePhrase={lirvana.challengePhrase || undefined}
         sessionId={sessionId}
+        onStateChange={lirvana.handleModalStateChange}
       />
     </div>
   );
